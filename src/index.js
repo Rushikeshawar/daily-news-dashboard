@@ -1,4 +1,4 @@
-// Fix 3: Corrected src/index.js (NOT .tsx)
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
