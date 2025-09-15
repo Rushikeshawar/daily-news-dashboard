@@ -1,4 +1,3 @@
- 
 // src/pages/advertisements/Advertisements.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -39,17 +38,24 @@ const Advertisements = () => {
         limit: 12,
         ...filters
       };
+      
+      console.log('Fetching ads with params:', params);
       const response = await adService.getAds(params);
-      setAds(response.data);
-      // Mock pagination for demo
+      console.log('Ads response:', response.data);
+      
+      // Handle different response structures
+      const adsData = Array.isArray(response.data) ? response.data : 
+                     response.data?.advertisements || response.data?.ads || [];
+      
+      setAds(adsData);
       setPagination({
-        currentPage: 1,
-        totalPages: Math.ceil(response.data.length / 12),
-        totalItems: response.data.length
+        currentPage: pagination.currentPage,
+        totalPages: Math.ceil(adsData.length / 12),
+        totalItems: adsData.length
       });
     } catch (error) {
-      toast.error('Failed to fetch advertisements');
       console.error('Fetch ads error:', error);
+      toast.error('Failed to fetch advertisements');
     } finally {
       setLoading(false);
     }
@@ -176,13 +182,15 @@ const Advertisements = () => {
             ))}
           </div>
 
-          <Pagination
-            currentPage={pagination.currentPage}
-            totalPages={pagination.totalPages}
-            totalItems={pagination.totalItems}
-            itemsPerPage={12}
-            onPageChange={(page) => setPagination(prev => ({ ...prev, currentPage: page }))}
-          />
+          {pagination.totalPages > 1 && (
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              itemsPerPage={12}
+              onPageChange={(page) => setPagination(prev => ({ ...prev, currentPage: page }))}
+            />
+          )}
         </>
       )}
 
@@ -200,4 +208,3 @@ const Advertisements = () => {
 };
 
 export default Advertisements;
-

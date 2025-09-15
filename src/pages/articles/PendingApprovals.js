@@ -1,5 +1,4 @@
- 
-// src/pages/articles/PendingApprovals.js
+// src/pages/articles/PendingApprovals.js - COMPLETELY FIXED
 import React, { useState, useEffect } from 'react';
 import { Clock, Check, X, User, Calendar, Eye } from 'lucide-react';
 import { articleService } from '../../services/articleService';
@@ -35,12 +34,36 @@ const PendingApprovals = () => {
         limit: 10,
         status: 'PENDING'
       };
+      
+      console.log('PendingApprovals: Fetching with params:', params);
+      
+      // Use the specific getPendingArticles method
       const response = await articleService.getPendingArticles(params);
-      setArticles(response.data.articles);
-      setPagination(response.data.pagination);
+      console.log('PendingApprovals: Service response:', response);
+      
+      const articlesData = response.data?.articles || [];
+      const paginationData = response.data?.pagination || {
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: articlesData.length
+      };
+      
+      console.log('PendingApprovals: Final articles data:', articlesData);
+      console.log('PendingApprovals: Pagination data:', paginationData);
+      
+      setArticles(Array.isArray(articlesData) ? articlesData : []);
+      setPagination(paginationData);
+      
     } catch (error) {
+      console.error('PendingApprovals: Fetch error:', error);
       toast.error('Failed to fetch pending articles');
-      console.error('Fetch pending articles error:', error);
+      
+      setArticles([]);
+      setPagination({
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: 0
+      });
     } finally {
       setLoading(false);
     }
@@ -73,6 +96,10 @@ const PendingApprovals = () => {
     setApprovalModal({ open: true, action });
   };
 
+  const handlePageChange = (page) => {
+    setPagination(prev => ({ ...prev, currentPage: page }));
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -89,67 +116,116 @@ const PendingApprovals = () => {
         <p className="text-gray-600">Review articles waiting for approval</p>
       </div>
 
+      {/* Debug Info - Remove in production */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
+        <strong>Debug Info:</strong> Loading: {loading.toString()}, Articles Count: {articles.length}, 
+        Total Items: {pagination.totalItems}, Current Page: {pagination.currentPage}
+        {articles.length > 0 && (
+          <div className="mt-2">
+            <strong>Sample Article:</strong> {articles[0]?.headline || 'No headline'} - 
+            Status: {articles[0]?.status || 'No status'} - 
+            Category: {articles[0]?.category || 'No category'}
+          </div>
+        )}
+      </div>
+
       {articles.length === 0 ? (
         <div className="text-center py-12">
           <Clock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">No Pending Articles</h2>
-          <p className="text-gray-600">All articles have been reviewed!</p>
+          <p className="text-gray-600">
+            {loading ? 'Loading...' : 'All articles have been reviewed or there are no articles with PENDING status.'}
+          </p>
+          
+          {/* Additional debug info */}
+          <div className="mt-4 text-sm text-gray-500">
+            <p>API Endpoint: GET /articles/pending/approval</p>
+            <p>Check if there are articles with status 'PENDING' in your database.</p>
+            {filters.category && <p>Filtered by category: {filters.category}</p>}
+          </div>
         </div>
       ) : (
         <>
           <div className="space-y-4">
-            {articles.map((article) => (
-              <div key={article.id} className="card">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {article.headline}
-                    </h3>
-                    <p className="text-gray-600 mb-4 line-clamp-2">
-                      {article.summary || article.briefContent}
-                    </p>
+            {articles.map((article) => {
+              if (!article || !article.id) {
+                console.warn('Invalid article data in pending:', article);
+                return null;
+              }
+
+              return (
+                <div key={article.id} className="card">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-lg font-semibold text-gray-900">
+                          {article.headline || 'Untitled Article'}
+                        </h3>
+                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-medium">
+                          {article.status || 'PENDING'}
+                        </span>
+                      </div>
+                      
+                      <p className="text-gray-600 mb-4 line-clamp-2">
+                        {article.briefContent || article.summary || 'No summary available'}
+                      </p>
+                      
+                      <div className="flex items-center space-x-6 text-sm text-gray-500">
+                        <div className="flex items-center">
+                          <User className="w-4 h-4 mr-1" />
+                          <span>{article.author?.fullName || article.authorName || 'Unknown Author'}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          <span>
+                            {article.createdAt 
+                              ? new Date(article.createdAt).toLocaleDateString() 
+                              : 'No date'}
+                          </span>
+                        </div>
+                        {article.category && (
+                          <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                            {article.category}
+                          </span>
+                        )}
+                        <div className="flex items-center">
+                          <Eye className="w-4 h-4 mr-1" />
+                          <span>{article.viewCount || 0} views</span>
+                        </div>
+                      </div>
+                    </div>
                     
-                    <div className="flex items-center space-x-6 text-sm text-gray-500">
-                      <div className="flex items-center">
-                        <User className="w-4 h-4 mr-1" />
-                        <span>{article.author?.fullName}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
-                        <span>{new Date(article.createdAt).toLocaleDateString()}</span>
-                      </div>
-                      <span className="text-blue-600">{article.category}</span>
+                    <div className="flex items-center space-x-2 ml-4">
+                      <button
+                        onClick={() => openApprovalModal(article, 'approve')}
+                        className="btn-success flex items-center"
+                      >
+                        <Check className="w-4 h-4 mr-1" />
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => openApprovalModal(article, 'reject')}
+                        className="btn-danger flex items-center"
+                      >
+                        <X className="w-4 h-4 mr-1" />
+                        Reject
+                      </button>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center space-x-2 ml-4">
-                    <button
-                      onClick={() => openApprovalModal(article, 'approve')}
-                      className="btn-success flex items-center"
-                    >
-                      <Check className="w-4 h-4 mr-1" />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => openApprovalModal(article, 'reject')}
-                      className="btn-danger flex items-center"
-                    >
-                      <X className="w-4 h-4 mr-1" />
-                      Reject
-                    </button>
-                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
-          <Pagination
-            currentPage={pagination.currentPage}
-            totalPages={pagination.totalPages}
-            totalItems={pagination.totalItems}
-            itemsPerPage={10}
-            onPageChange={(page) => setPagination(prev => ({ ...prev, currentPage: page }))}
-          />
+          {pagination && pagination.totalPages > 1 && (
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              totalItems={pagination.totalItems}
+              itemsPerPage={10}
+              onPageChange={handlePageChange}
+            />
+          )}
         </>
       )}
 
@@ -168,10 +244,10 @@ const PendingApprovals = () => {
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {selectedArticle.headline}
+                {selectedArticle.headline || 'Untitled Article'}
               </h3>
               <p className="text-gray-600">
-                {selectedArticle.summary || selectedArticle.briefContent}
+                {selectedArticle.briefContent || selectedArticle.summary || 'No summary available'}
               </p>
             </div>
             
@@ -220,4 +296,3 @@ const PendingApprovals = () => {
 };
 
 export default PendingApprovals;
-

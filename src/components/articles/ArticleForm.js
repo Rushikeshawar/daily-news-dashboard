@@ -1,6 +1,4 @@
- 
-
-// src/components/articles/ArticleForm.js
+// src/components/articles/ArticleForm.js - UPDATED WITH FIXED CATEGORIES
 import React, { useState, useEffect } from 'react';
 import { categoryService } from '../../services/categoryService';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -20,16 +18,43 @@ const ArticleForm = ({ initialData = {}, onSubmit, loading = false }) => {
   const [categories, setCategories] = useState([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
 
+  // Default categories that match your backend
+  const defaultCategories = [
+    { id: '1', name: 'Technology', isActive: true },
+    { id: '2', name: 'Business', isActive: true },
+    { id: '3', name: 'Sports', isActive: true },
+    { id: '4', name: 'Politics', isActive: true },
+    { id: '5', name: 'Entertainment', isActive: true },
+    { id: '6', name: 'Science', isActive: true },
+    { id: '7', name: 'Health', isActive: true },
+    { id: '8', name: 'Travel', isActive: true },
+    { id: '9', name: 'Education', isActive: true }
+  ];
+
   useEffect(() => {
     fetchCategories();
   }, []);
 
   const fetchCategories = async () => {
     try {
+      setLoadingCategories(true);
+      console.log('ArticleForm: Fetching categories...');
       const response = await categoryService.getCategories();
-      setCategories(response.data.filter(cat => cat.isActive));
+      console.log('ArticleForm: Categories response:', response.data);
+      
+      const categoriesData = response.data;
+      if (categoriesData && Array.isArray(categoriesData) && categoriesData.length > 0) {
+        const activeCategories = categoriesData.filter(cat => cat.isActive !== false);
+        setCategories(activeCategories);
+        console.log('ArticleForm: Using API categories:', activeCategories);
+      } else {
+        console.log('ArticleForm: API returned empty/invalid data, using defaults');
+        setCategories(defaultCategories);
+      }
     } catch (error) {
-      toast.error('Failed to fetch categories');
+      console.error('ArticleForm: Failed to fetch categories:', error);
+      toast.error('Failed to fetch categories - using defaults');
+      setCategories(defaultCategories);
     } finally {
       setLoadingCategories(false);
     }
@@ -46,6 +71,7 @@ const ArticleForm = ({ initialData = {}, onSubmit, loading = false }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    // Validation
     if (!formData.headline.trim()) {
       toast.error('Headline is required');
       return;
@@ -66,7 +92,14 @@ const ArticleForm = ({ initialData = {}, onSubmit, loading = false }) => {
       return;
     }
 
-    onSubmit(formData);
+    // Process tags - split by comma and clean up
+    const processedData = {
+      ...formData,
+      tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag) : []
+    };
+
+    console.log('ArticleForm: Submitting data:', processedData);
+    onSubmit(processedData);
   };
 
   if (loadingCategories) {
@@ -75,6 +108,14 @@ const ArticleForm = ({ initialData = {}, onSubmit, loading = false }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Debug Info */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
+        <strong>Form Debug:</strong> Categories loaded: {categories.length}, Selected category: "{formData.category}"
+        <div className="mt-1">
+          Available categories: {categories.map(cat => cat.name).join(', ')}
+        </div>
+      </div>
+
       <div>
         <label htmlFor="headline" className="block text-sm font-medium text-gray-700 mb-2">
           Headline *
@@ -138,11 +179,16 @@ const ArticleForm = ({ initialData = {}, onSubmit, loading = false }) => {
           >
             <option value="">Select category</option>
             {categories.map((category) => (
-              <option key={category.id} value={category.name}>
+              <option key={category.id || category.name} value={category.name}>
                 {category.name}
               </option>
             ))}
           </select>
+          {categories.length === 0 && (
+            <p className="text-sm text-red-500 mt-1">
+              No categories available. Please contact admin.
+            </p>
+          )}
         </div>
 
         <div>

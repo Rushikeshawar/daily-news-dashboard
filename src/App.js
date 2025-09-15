@@ -1,4 +1,4 @@
-
+// src/App.js
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -33,6 +33,9 @@ import Notifications from './pages/notifications/Notifications';
 import './App.css';
 
 function App() {
+  // Add debug logging
+  console.log('App component loaded');
+  
   return (
     <AuthProvider>
       <NotificationProvider>

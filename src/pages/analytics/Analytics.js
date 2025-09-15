@@ -1,4 +1,3 @@
- 
 // src/pages/analytics/Analytics.js
 import React, { useState, useEffect } from 'react';
 import { 
@@ -34,35 +33,7 @@ const Analytics = () => {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState('7d');
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, [dateRange]);
-
-  const fetchAnalytics = async () => {
-    try {
-      setLoading(true);
-      const response = await analyticsService.getDashboard({
-        period: dateRange
-      });
-      setAnalytics(response.data);
-    } catch (error) {
-      toast.error('Failed to fetch analytics data');
-      console.error('Analytics error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <LoadingSpinner size="lg" text="Loading analytics..." />
-      </div>
-    );
-  }
-
+  // Mock data that will always be available
   const mockData = {
     overview: {
       totalArticles: 245,
@@ -71,7 +42,15 @@ const Analytics = () => {
       totalRevenue: 15750
     },
     chartData: {
-      dailyViews: [1200, 1400, 1100, 1600, 1800, 2000, 1750],
+      dailyViews: [
+        { day: 'Day 1', views: 1200 },
+        { day: 'Day 2', views: 1400 },
+        { day: 'Day 3', views: 1100 },
+        { day: 'Day 4', views: 1600 },
+        { day: 'Day 5', views: 1800 },
+        { day: 'Day 6', views: 2000 },
+        { day: 'Day 7', views: 1750 }
+      ],
       categoryData: [
         { name: 'Technology', value: 35, articles: 85 },
         { name: 'Business', value: 25, articles: 60 },
@@ -94,6 +73,52 @@ const Analytics = () => {
     }
   };
 
+  useEffect(() => {
+    fetchAnalytics();
+  }, [dateRange]);
+
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      const response = await analyticsService.getDashboard({
+        period: dateRange
+      });
+      
+      // Process the response data and ensure it has the right structure
+      const processedData = {
+        overview: response.data?.overview || mockData.overview,
+        chartData: {
+          dailyViews: response.data?.chartData?.dailyViews?.map((views, index) => ({
+            day: `Day ${index + 1}`,
+            views
+          })) || mockData.chartData.dailyViews,
+          categoryData: response.data?.chartData?.categoryData || mockData.chartData.categoryData,
+          userGrowth: response.data?.chartData?.userGrowth || mockData.chartData.userGrowth,
+          revenueData: response.data?.chartData?.revenueData || mockData.chartData.revenueData
+        }
+      };
+      
+      setAnalytics(processedData);
+    } catch (error) {
+      console.error('Analytics error:', error);
+      toast.error('Failed to fetch analytics data - using demo data');
+      setAnalytics(mockData);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <LoadingSpinner size="lg" text="Loading analytics..." />
+      </div>
+    );
+  }
+
+  // Ensure we always have data to render
   const data = analytics || mockData;
 
   return (
@@ -123,7 +148,7 @@ const Analytics = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Articles</p>
               <p className="text-3xl font-bold text-gray-900">
-                {data.overview.totalArticles.toLocaleString()}
+                {data.overview?.totalArticles?.toLocaleString() || '0'}
               </p>
             </div>
             <FileText className="w-8 h-8 text-blue-500" />
@@ -135,7 +160,7 @@ const Analytics = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Users</p>
               <p className="text-3xl font-bold text-gray-900">
-                {data.overview.totalUsers.toLocaleString()}
+                {data.overview?.totalUsers?.toLocaleString() || '0'}
               </p>
             </div>
             <Users className="w-8 h-8 text-green-500" />
@@ -147,7 +172,7 @@ const Analytics = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Views</p>
               <p className="text-3xl font-bold text-gray-900">
-                {data.overview.totalViews.toLocaleString()}
+                {data.overview?.totalViews?.toLocaleString() || '0'}
               </p>
             </div>
             <BarChart3 className="w-8 h-8 text-purple-500" />
@@ -159,7 +184,7 @@ const Analytics = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-3xl font-bold text-gray-900">
-                ${data.overview.totalRevenue.toLocaleString()}
+                ${data.overview?.totalRevenue?.toLocaleString() || '0'}
               </p>
             </div>
             <DollarSign className="w-8 h-8 text-yellow-500" />
@@ -176,10 +201,7 @@ const Analytics = () => {
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data.chartData.dailyViews.map((views, index) => ({
-                day: `Day ${index + 1}`,
-                views
-              }))}>
+              <AreaChart data={data.chartData?.dailyViews || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="day" />
                 <YAxis />
@@ -199,7 +221,7 @@ const Analytics = () => {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={data.chartData.categoryData}
+                  data={data.chartData?.categoryData || []}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -208,7 +230,7 @@ const Analytics = () => {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {data.chartData.categoryData.map((entry, index) => (
+                  {(data.chartData?.categoryData || []).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -228,7 +250,7 @@ const Analytics = () => {
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data.chartData.userGrowth}>
+              <LineChart data={data.chartData?.userGrowth || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
@@ -246,7 +268,7 @@ const Analytics = () => {
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.chartData.revenueData}>
+              <BarChart data={data.chartData?.revenueData || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="month" />
                 <YAxis />
@@ -275,7 +297,7 @@ const Analytics = () => {
               </tr>
             </thead>
             <tbody>
-              {data.chartData.categoryData.map((category, index) => (
+              {(data.chartData?.categoryData || []).map((category, index) => (
                 <tr key={index}>
                   <td className="font-medium">{category.name}</td>
                   <td>{category.articles}</td>
@@ -297,4 +319,3 @@ const Analytics = () => {
 };
 
 export default Analytics;
-

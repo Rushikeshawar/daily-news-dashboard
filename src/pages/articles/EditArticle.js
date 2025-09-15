@@ -1,4 +1,3 @@
- 
 // src/pages/articles/EditArticle.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -22,6 +21,7 @@ const EditArticle = () => {
   const fetchArticle = async () => {
     try {
       const response = await articleService.getArticle(id);
+      console.log('Edit article response:', response.data);
       setArticle(response.data);
     } catch (error) {
       toast.error('Failed to fetch article');
@@ -53,6 +53,31 @@ const EditArticle = () => {
     );
   }
 
+  // Convert article data to the format expected by ArticleForm
+  const getFormInitialData = () => {
+    if (!article) return {};
+
+    // Handle tags conversion: backend string -> frontend string
+    let tagsString = '';
+    if (article.tags) {
+      if (Array.isArray(article.tags)) {
+        tagsString = article.tags.join(', ');
+      } else if (typeof article.tags === 'string') {
+        tagsString = article.tags;
+      }
+    }
+
+    return {
+      headline: article.headline || '',
+      briefContent: article.briefContent || '',
+      fullContent: article.fullContent || '',
+      category: article.category || '',
+      tags: tagsString,
+      featuredImage: article.featuredImage || '',
+      priorityLevel: article.priorityLevel || 1
+    };
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center space-x-4">
@@ -70,15 +95,7 @@ const EditArticle = () => {
 
       <div className="card">
         <ArticleForm 
-          initialData={{
-            headline: article?.headline || '',
-            briefContent: article?.summary || article?.briefContent || '',
-            fullContent: article?.content || article?.fullContent || '',
-            category: article?.category || '',
-            tags: article?.tags?.join(', ') || '',
-            featuredImage: article?.featuredImage || '',
-            priorityLevel: article?.priorityLevel || 1
-          }}
+          initialData={getFormInitialData()}
           onSubmit={handleSubmit} 
           loading={saving} 
         />
@@ -88,4 +105,3 @@ const EditArticle = () => {
 };
 
 export default EditArticle;
-

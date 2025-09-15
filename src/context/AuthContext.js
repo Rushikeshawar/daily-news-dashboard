@@ -1,4 +1,3 @@
- 
 // src/context/AuthContext.js
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { authService } from '../services/auth';
@@ -22,19 +21,28 @@ const authReducer = (state, action) => {
         ...state, 
         loading: false, 
         error: action.payload,
-        isAuthenticated: false 
+        isAuthenticated: false,
+        user: null,
+        token: null
       };
     case 'LOGOUT':
       return { 
         ...state, 
         isAuthenticated: false, 
         user: null, 
-        token: null 
+        token: null,
+        loading: false,
+        error: null
       };
     case 'UPDATE_PROFILE':
       return {
         ...state,
         user: { ...state.user, ...action.payload }
+      };
+    case 'SET_LOADING':
+      return {
+        ...state,
+        loading: action.payload
       };
     default:
       return state;
@@ -45,7 +53,7 @@ const initialState = {
   isAuthenticated: false,
   user: null,
   token: null,
-  loading: false,
+  loading: true,
   error: null
 };
 
@@ -53,31 +61,65 @@ export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
+    const initializeAuth = () => {
       try {
-        const user = JSON.parse(userData);
-        dispatch({
-          type: 'LOGIN_SUCCESS',
-          payload: { user, accessToken: token }
-        });
+        const token = localStorage.getItem('token');
+        const userData = localStorage.getItem('user');
+        
+        console.log('Initializing auth:', { hasToken: !!token, hasUserData: !!userData });
+        
+        if (token && userData) {
+          const user = JSON.parse(userData);
+          console.log('Found existing auth:', { user: user.email, role: user.role });
+          
+          dispatch({
+            type: 'LOGIN_SUCCESS',
+            payload: { user, accessToken: token }
+          });
+        } else {
+          console.log('No existing auth found');
+          dispatch({ type: 'SET_LOADING', payload: false });
+        }
       } catch (error) {
+        console.error('Error initializing auth:', error);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
-    }
+    };
+
+    initializeAuth();
   }, []);
 
   const login = async (credentials) => {
     dispatch({ type: 'LOGIN_START' });
     try {
+      console.log('Attempting login for:', credentials.email);
       const response = await authService.login(credentials);
-      const { user, accessToken } = response.data;
+      console.log('Login response:', response.data);
       
+      // Handle different response structures
+      let user, accessToken;
+      
+      if (response.data.data) {
+        // If response has a nested data structure
+        user = response.data.data.user;
+        accessToken = response.data.data.accessToken;
+      } else {
+        // If response has flat structure
+        user = response.data.user;
+        accessToken = response.data.accessToken;
+      }
+      
+      if (!accessToken) {
+        throw new Error('No access token received');
+      }
+      
+      // Store auth data
       localStorage.setItem('token', accessToken);
       localStorage.setItem('user', JSON.stringify(user));
+      
+      console.log('Auth data stored successfully', { user: user.email, hasToken: !!accessToken });
       
       dispatch({
         type: 'LOGIN_SUCCESS',
@@ -86,9 +128,11 @@ export const AuthProvider = ({ children }) => {
       
       return response;
     } catch (error) {
+      console.error('Login error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Login failed';
       dispatch({
         type: 'LOGIN_FAILURE',
-        payload: error.response?.data?.message || 'Login failed'
+        payload: errorMessage
       });
       throw error;
     }
@@ -103,6 +147,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       dispatch({ type: 'LOGOUT' });
+      console.log('User logged out');
     }
   };
 
@@ -133,4 +178,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

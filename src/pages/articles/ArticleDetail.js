@@ -1,4 +1,3 @@
- 
 // src/pages/articles/ArticleDetail.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
@@ -42,9 +41,30 @@ const ArticleDetail = () => {
 
   const fetchArticle = async () => {
     try {
+      setLoading(true);
       const response = await articleService.getArticle(id);
-      setArticle(response.data);
+      console.log('Article detail response:', response.data);
+      
+      // Handle the backend response structure
+      let articleData;
+      if (response.data && response.data.success && response.data.data) {
+        // Check if data is nested under 'article' key
+        if (response.data.data.article) {
+          articleData = response.data.data.article;
+        } else {
+          articleData = response.data.data;
+        }
+      } else if (response.data && response.data.article) {
+        // Direct article object
+        articleData = response.data.article;
+      } else {
+        articleData = response.data;
+      }
+      
+      console.log('Processed article data:', articleData);
+      setArticle(articleData);
     } catch (error) {
+      console.error('Fetch article error:', error);
       toast.error('Failed to fetch article');
       navigate('/articles');
     } finally {
@@ -87,9 +107,25 @@ const ArticleDetail = () => {
     const badges = {
       PENDING: 'status-badge status-pending',
       APPROVED: 'status-badge status-approved',
+      PUBLISHED: 'status-badge status-approved',
       REJECTED: 'status-badge status-rejected'
     };
     return badges[status] || 'status-badge';
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (error) {
+      return 'Invalid Date';
+    }
   };
 
   if (loading) {
@@ -131,7 +167,7 @@ const ArticleDetail = () => {
         
         <div className="flex items-center space-x-2">
           <span className={getStatusBadge(article.status)}>
-            {article.status}
+            {article.status || 'UNKNOWN'}
           </span>
           
           {canEdit && (
@@ -181,42 +217,51 @@ const ArticleDetail = () => {
               src={article.featuredImage}
               alt={article.headline}
               className="w-full h-64 object-cover rounded-lg"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
             />
           </div>
         )}
 
         {/* Title */}
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
-          {article.headline}
+          {article.headline || 'Untitled Article'}
         </h1>
 
         {/* Meta Information */}
         <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600 mb-6 pb-6 border-b">
           <div className="flex items-center">
             <User className="w-4 h-4 mr-2" />
-            <span>{article.author?.fullName}</span>
+            <span>{article.author?.fullName || article.authorName || 'Unknown Author'}</span>
           </div>
           <div className="flex items-center">
             <Calendar className="w-4 h-4 mr-2" />
-            <span>{new Date(article.publishedAt || article.createdAt).toLocaleDateString()}</span>
+            <span>{formatDate(article.publishedAt || article.createdAt)}</span>
           </div>
           <div className="flex items-center">
             <Eye className="w-4 h-4 mr-2" />
-            <span>{article.viewCount || 0} views</span>
+            <span>{article.viewCount || article.views || 0} views</span>
           </div>
-          <div className="flex items-center">
-            <Tag className="w-4 h-4 mr-2" />
-            <span>{article.category}</span>
-          </div>
+          {article.category && (
+            <div className="flex items-center">
+              <Tag className="w-4 h-4 mr-2" />
+              <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                {article.category}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Brief Content */}
-        {(article.summary || article.briefContent) && (
+        {article.briefContent && (
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-3">Summary</h2>
-            <p className="text-lg text-gray-700 leading-relaxed">
-              {article.summary || article.briefContent}
-            </p>
+            <div className="p-4 bg-gray-50 rounded-lg">
+              <p className="text-lg text-gray-700 leading-relaxed">
+                {article.briefContent}
+              </p>
+            </div>
           </div>
         )}
 
@@ -224,11 +269,19 @@ const ArticleDetail = () => {
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Full Article</h2>
           <div className="prose max-w-none">
-            {(article.content || article.fullContent)?.split('\n').map((paragraph, index) => (
-              <p key={index} className="mb-4 text-gray-700 leading-relaxed">
-                {paragraph}
-              </p>
-            ))}
+            {article.fullContent ? (
+              article.fullContent.split('\n').map((paragraph, index) => (
+                paragraph.trim() ? (
+                  <p key={index} className="mb-4 text-gray-700 leading-relaxed">
+                    {paragraph}
+                  </p>
+                ) : (
+                  <br key={index} />
+                )
+              ))
+            ) : (
+              <p className="text-gray-500 italic">No full content available.</p>
+            )}
           </div>
         </div>
 
@@ -237,14 +290,18 @@ const ArticleDetail = () => {
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-2">Tags</h3>
             <div className="flex flex-wrap gap-2">
-              {article.tags.map((tag, index) => (
+              {Array.isArray(article.tags) ? article.tags.map((tag, index) => (
                 <span
                   key={index}
                   className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
                 >
                   #{tag}
                 </span>
-              ))}
+              )) : (
+                <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
+                  #{article.tags}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -256,6 +313,8 @@ const ArticleDetail = () => {
             <p className="text-red-700">{article.rejectionComments}</p>
           </div>
         )}
+
+        
       </div>
 
       {/* Delete Confirmation Dialog */}
