@@ -1,4 +1,4 @@
-// src/App.js
+// src/App.js - Updated with corrected AI/ML and Time Saver permissions
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
@@ -30,11 +30,26 @@ import SystemSettings from './pages/admin/SystemSettings';
 import SystemLogs from './pages/admin/SystemLogs';
 import SystemHealth from './pages/admin/SystemHealth';
 import Notifications from './pages/notifications/Notifications';
+
+// AI/ML routes
+import AiMlNews from './pages/ai-ml/AiMlNews';
+import AiMlDetail from './pages/ai-ml/AiMlDetail';
+import AiMlTrending from './pages/ai-ml/AiMlTrending';
+import AiMlCategories from './pages/ai-ml/AiMlCategories';
+import AiMlInsights from './pages/ai-ml/AiMlInsights';
+import CreateAiMlArticle from './pages/ai-ml/CreateAiMlArticle';
+
+// Time Saver routes
+import TimeSaverDashboard from './pages/time-saver/TimeSaverDashboard';
+import TimeSaverContent from './pages/time-saver/TimeSaverContent';
+import TimeSaverCategory from './pages/time-saver/TimeSaverCategory';
+import TimeSaverAnalytics from './pages/time-saver/TimeSaverAnalytics';
+import CreateTimeSaverContent from './pages/time-saver/CreateTimeSaverContent';
+
 import './App.css';
 
 function App() {
-  // Add debug logging
-  console.log('App component loaded');
+  console.log('App component loaded with corrected permissions');
   
   return (
     <AuthProvider>
@@ -68,6 +83,77 @@ function App() {
                         <Route path="/articles/pending" element={
                           <RoleGuard allowedRoles={['AD_MANAGER', 'ADMIN']}>
                             <PendingApprovals />
+                          </RoleGuard>
+                        } />
+
+                        {/* AI/ML Routes - Updated Permissions */}
+                        {/* All roles can view AI/ML content */}
+                        <Route path="/ai-ml" element={
+                          <RoleGuard allowedRoles={['EDITOR', 'AD_MANAGER', 'ADMIN']}>
+                            <AiMlNews />
+                          </RoleGuard>
+                        } />
+                        <Route path="/ai-ml/trending" element={
+                          <RoleGuard allowedRoles={['EDITOR', 'AD_MANAGER', 'ADMIN']}>
+                            <AiMlTrending />
+                          </RoleGuard>
+                        } />
+                        <Route path="/ai-ml/categories" element={
+                          <RoleGuard allowedRoles={['EDITOR', 'AD_MANAGER', 'ADMIN']}>
+                            <AiMlCategories />
+                          </RoleGuard>
+                        } />
+                        
+                        {/* Insights: ADMIN (view-only) and AD_MANAGER (can view) */}
+                        <Route path="/ai-ml/insights" element={
+                          <RoleGuard allowedRoles={['AD_MANAGER', 'ADMIN']}>
+                            <AiMlInsights />
+                          </RoleGuard>
+                        } />
+                        
+                        {/* Create: Only EDITOR and AD_MANAGER can create, ADMIN is view-only */}
+                        <Route path="/ai-ml/create" element={
+                          <RoleGuard allowedRoles={['EDITOR', 'AD_MANAGER']}>
+                            <CreateAiMlArticle />
+                          </RoleGuard>
+                        } />
+                        
+                        {/* View specific article: All roles */}
+                        <Route path="/ai-ml/:id" element={
+                          <RoleGuard allowedRoles={['EDITOR', 'AD_MANAGER', 'ADMIN']}>
+                            <AiMlDetail />
+                          </RoleGuard>
+                        } />
+
+                        {/* Time Saver Routes - Updated Permissions */}
+                        {/* All roles can view Time Saver content */}
+                        <Route path="/time-saver" element={
+                          <RoleGuard allowedRoles={['EDITOR', 'AD_MANAGER', 'ADMIN']}>
+                            <TimeSaverDashboard />
+                          </RoleGuard>
+                        } />
+                        <Route path="/time-saver/content" element={
+                          <RoleGuard allowedRoles={['EDITOR', 'AD_MANAGER', 'ADMIN']}>
+                            <TimeSaverContent />
+                          </RoleGuard>
+                        } />
+                        <Route path="/time-saver/category/:group" element={
+                          <RoleGuard allowedRoles={['EDITOR', 'AD_MANAGER', 'ADMIN']}>
+                            <TimeSaverCategory />
+                          </RoleGuard>
+                        } />
+                        
+                        {/* Analytics: ADMIN (view-only) and AD_MANAGER (can view) */}
+                        <Route path="/time-saver/analytics" element={
+                          <RoleGuard allowedRoles={['AD_MANAGER', 'ADMIN']}>
+                            <TimeSaverAnalytics />
+                          </RoleGuard>
+                        } />
+                        
+                        {/* Create: Only EDITOR and AD_MANAGER can create, ADMIN is view-only */}
+                        <Route path="/time-saver/create" element={
+                          <RoleGuard allowedRoles={['EDITOR', 'AD_MANAGER']}>
+                            <CreateTimeSaverContent />
                           </RoleGuard>
                         } />
 

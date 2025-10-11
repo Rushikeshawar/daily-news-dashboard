@@ -84,7 +84,6 @@ const Analytics = () => {
         period: dateRange
       });
       
-      // Process the response data and ensure it has the right structure
       const processedData = {
         overview: response.data?.overview || mockData.overview,
         chartData: {
@@ -118,7 +117,6 @@ const Analytics = () => {
     );
   }
 
-  // Ensure we always have data to render
   const data = analytics || mockData;
 
   return (
@@ -184,7 +182,7 @@ const Analytics = () => {
             <div>
               <p className="text-sm font-medium text-gray-600">Total Revenue</p>
               <p className="text-3xl font-bold text-gray-900">
-                ${data.overview?.totalRevenue?.toLocaleString() || '0'}
+                {data.overview?.totalRevenue?.toLocaleString() || '0'}
               </p>
             </div>
             <DollarSign className="w-8 h-8 text-yellow-500" />

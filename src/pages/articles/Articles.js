@@ -1,4 +1,4 @@
-// src/pages/articles/Articles.js - UPDATED WITH FIXED FILTERS
+// src/pages/articles/Articles.js - FIXED VERSION
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Filter, FileText } from 'lucide-react';
@@ -51,6 +51,13 @@ const Articles = () => {
         limit: 12,
         ...filters
       };
+      
+      // Remove empty filters
+      Object.keys(params).forEach(key => {
+        if (params[key] === '' || params[key] === null || params[key] === undefined) {
+          delete params[key];
+        }
+      });
       
       console.log('Articles: Fetching with params:', params);
       const response = await articleService.getArticles(params);
@@ -175,16 +182,15 @@ const Articles = () => {
               className="form-select"
             >
               <option value="">All Categories</option>
-              {/* Updated categories that match backend expectations */}
-              <option value="Technology">Technology</option>
-              <option value="Business">Business</option>
-              <option value="Sports">Sports</option>
-              <option value="Politics">Politics</option>
-              <option value="Entertainment">Entertainment</option>
-              <option value="Science">Science</option>
-              <option value="Health">Health</option>
-              <option value="Travel">Travel</option>
-              <option value="Education">Education</option>
+              <option value="TECHNOLOGY">Technology</option>
+              <option value="BUSINESS">Business</option>
+              <option value="SPORTS">Sports</option>
+              <option value="POLITICS">Politics</option>
+              <option value="ENTERTAINMENT">Entertainment</option>
+              <option value="SCIENCE">Science</option>
+              <option value="HEALTH">Health</option>
+              <option value="TRAVEL">Travel</option>
+              <option value="EDUCATION">Education</option>
             </select>
             
             {(user?.role === 'AD_MANAGER' || user?.role === 'ADMIN') && (
@@ -195,9 +201,9 @@ const Articles = () => {
               >
                 <option value="">All Status</option>
                 <option value="PENDING">Pending</option>
-                <option value="APPROVED">Approved</option>
-                <option value="REJECTED">Rejected</option>
                 <option value="PUBLISHED">Published</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="DRAFT">Draft</option>
               </select>
             )}
             
@@ -219,8 +225,6 @@ const Articles = () => {
         </div>
       </div>
 
-      
-
       {/* Articles Grid */}
       {loading ? (
         <div className="flex justify-center py-12">
@@ -235,11 +239,6 @@ const Articles = () => {
               ? 'Try adjusting your filters to see more results.'
               : 'Get started by creating your first article.'}
           </p>
-          {/* Debug info for empty state */}
-          <div className="mt-4 text-sm text-gray-500">
-            <p>Current filters: Category="{filters.category}", Status="{filters.status}", Search="{filters.search}"</p>
-            <p>API Response: {pagination.totalItems} total items found</p>
-          </div>
           {canCreateArticle && (
             <button
               onClick={() => navigate('/articles/create')}

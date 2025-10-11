@@ -1,4 +1,4 @@
-// src/services/aiMlService.js
+// src/services/aiMlService.js - COMPLETE CORRECTED VERSION
 import api from './api';
 
 const mockAiMlNews = [
@@ -125,17 +125,34 @@ export const aiMlService = {
     }
   },
 
-  // Get single AI/ML article
+  // Get single AI/ML article - CORRECTED
   getArticle: async (id) => {
     try {
-      const response = await api.get(`/ai-ml/news/${id}`);
+      if (!id) {
+        throw new Error('Article ID is required');
+      }
+      
+      console.log('AI/ML Service: Fetching article with ID:', id);
+      
+      const response = await api.get(`/ai-ml/news/${id}`, {
+        params: { trackView: 'true' }
+      });
+      console.log('AI/ML article API response:', response.data);
+      
       const actualData = response.data?.data || response.data;
       return {
         data: actualData?.article || actualData
       };
     } catch (error) {
-      console.warn('AI/ML article API unavailable, using mock data');
-      const mockArticle = mockAiMlNews.find(article => article.id === id) || mockAiMlNews[0];
+      console.warn('AI/ML article API unavailable, using mock data. Error:', error.message);
+      console.warn('Requested ID:', id);
+      
+      const mockArticle = mockAiMlNews.find(article => article.id === id) || {
+        ...mockAiMlNews[0],
+        id: id,
+        headline: 'Sample AI/ML Article',
+        briefContent: 'This is a sample AI/ML article for demonstration purposes.'
+      };
       return {
         data: mockArticle
       };
@@ -227,72 +244,6 @@ export const aiMlService = {
     }
   },
 
-  // Get articles by category
-  getArticlesByCategory: async (category, params) => {
-    try {
-      const response = await api.get(`/ai-ml/categories/${category}/articles`, { params });
-      const actualData = response.data?.data || response.data;
-      return {
-        data: {
-          category: actualData?.category || category,
-          articles: actualData?.articles || actualData || [],
-          pagination: actualData?.pagination || {
-            page: params?.page || 1,
-            limit: params?.limit || 10,
-            totalPages: 1,
-            totalCount: 0,
-            hasNext: false,
-            hasPrev: false
-          }
-        }
-      };
-    } catch (error) {
-      console.warn('AI/ML category articles API unavailable, using mock data');
-      const filteredArticles = mockAiMlNews.filter(article => article.category === category);
-      return {
-        data: {
-          category,
-          articles: filteredArticles,
-          pagination: {
-            page: 1,
-            limit: 10,
-            totalPages: 1,
-            totalCount: filteredArticles.length,
-            hasNext: false,
-            hasPrev: false
-          }
-        }
-      };
-    }
-  },
-
-  // Get popular topics
-  getPopularTopics: async (params) => {
-    try {
-      const response = await api.get('/ai-ml/popular-topics', { params });
-      const actualData = response.data?.data || response.data;
-      return {
-        data: {
-          topics: actualData?.topics || []
-        }
-      };
-    } catch (error) {
-      console.warn('AI/ML popular topics API unavailable, using mock data');
-      const mockTopics = [
-        { topic: 'gpt-5', score: 1500 },
-        { topic: 'deepmind', score: 1200 },
-        { topic: 'computer-vision', score: 980 },
-        { topic: 'robotics', score: 750 },
-        { topic: 'healthcare-ai', score: 650 }
-      ];
-      return {
-        data: {
-          topics: mockTopics
-        }
-      };
-    }
-  },
-
   // Get AI insights (for admins/managers)
   getInsights: async (params) => {
     try {
@@ -332,49 +283,136 @@ export const aiMlService = {
     }
   },
 
-  // Track article view
+  // Track article view - CORRECTED
   trackView: async (id) => {
     try {
-      await api.post(`/ai-ml/articles/${id}/view`);
-      return { data: { success: true } };
+      console.log('AI/ML Service: Tracking view for article ID:', id);
+      
+      const response = await api.post(`/ai-ml/news/${id}/view`, {
+        timestamp: new Date().toISOString()
+      });
+      
+      console.log('AI/ML Service: View tracking response:', response.data);
+      return { 
+        success: true, 
+        data: response.data 
+      };
     } catch (error) {
-      console.warn('AI/ML view tracking unavailable');
-      return { data: { success: true } };
+      console.warn('AI/ML view tracking failed (non-critical):', error.message);
+      return { 
+        success: false, 
+        error: error.message 
+      };
     }
   },
 
-  // Track article interaction
+  // Track article interaction - CORRECTED
   trackInteraction: async (id, interactionType) => {
     try {
-      await api.post(`/ai-ml/articles/${id}/interaction`, { interactionType });
-      return { data: { success: true } };
+      console.log('AI/ML Service: Tracking interaction for ID:', id, 'Type:', interactionType);
+      
+      const response = await api.post(`/ai-ml/news/${id}/interaction`, { 
+        interactionType,
+        timestamp: new Date().toISOString()
+      });
+      
+      console.log('AI/ML Service: Interaction tracking response:', response.data);
+      return { 
+        success: true, 
+        data: response.data 
+      };
     } catch (error) {
-      console.warn('AI/ML interaction tracking unavailable');
-      return { data: { success: true } };
+      console.warn('AI/ML interaction tracking failed (non-critical):', error.message);
+      return { 
+        success: false, 
+        error: error.message 
+      };
     }
   },
 
-  // Create AI/ML article (Admin only)
+  // Create AI/ML article (EDITOR and AD_MANAGER only)
   createArticle: async (data) => {
     try {
+      console.log('AI/ML Service: Creating article with data:', data);
+      
       const response = await api.post('/ai-ml/news', data);
+      console.log('AI/ML Service: Create response:', response.data);
+      
       const actualData = response.data?.data || response.data;
       return {
         data: actualData?.article || actualData
       };
     } catch (error) {
-      console.warn('Create AI/ML article API unavailable');
-      return {
-        data: {
-          id: Date.now().toString(),
-          ...data,
-          viewCount: 0,
-          shareCount: 0,
-          isTrending: false,
-          publishedAt: new Date().toISOString(),
-          createdAt: new Date().toISOString()
+      console.error('AI/ML Service: Create article error:', error);
+      
+      if (error.response) {
+        const status = error.response.status;
+        const message = error.response.data?.message || 'Unknown error';
+        
+        if (status === 403) {
+          throw new Error('Access denied: Only EDITOR and AD_MANAGER roles can create AI/ML articles');
+        } else if (status === 401) {
+          throw new Error('Authentication required: Please log in to create articles');
+        } else if (status === 400) {
+          throw new Error(`Validation error: ${message}`);
+        } else {
+          throw new Error(`Server error: ${message}`);
         }
+      } else if (error.request) {
+        throw new Error('Network error: Unable to reach the server');
+      } else {
+        throw new Error('Failed to create AI/ML article');
+      }
+    }
+  },
+
+  // Update AI/ML article (EDITOR and AD_MANAGER only)
+  updateArticle: async (id, data) => {
+    try {
+      console.log('AI/ML Service: Updating article ID:', id, 'with data:', data);
+      
+      const response = await api.put(`/ai-ml/news/${id}`, data);
+      console.log('AI/ML Service: Update response:', response.data);
+      
+      const actualData = response.data?.data || response.data;
+      return {
+        data: actualData?.article || actualData
       };
+    } catch (error) {
+      console.error('AI/ML Service: Update article error:', error);
+      
+      if (error.response?.status === 403) {
+        throw new Error('Access denied: You do not have permission to update this article');
+      } else if (error.response?.status === 404) {
+        throw new Error('Article not found');
+      } else {
+        throw new Error(error.response?.data?.message || 'Failed to update article');
+      }
+    }
+  },
+
+  // Delete AI/ML article (EDITOR and AD_MANAGER only)
+  deleteArticle: async (id) => {
+    try {
+      console.log('AI/ML Service: Deleting article ID:', id);
+      
+      const response = await api.delete(`/ai-ml/news/${id}`);
+      console.log('AI/ML Service: Delete response:', response.data);
+      
+      return { 
+        success: true, 
+        data: response.data 
+      };
+    } catch (error) {
+      console.error('AI/ML Service: Delete article error:', error);
+      
+      if (error.response?.status === 403) {
+        throw new Error('Access denied: You do not have permission to delete this article');
+      } else if (error.response?.status === 404) {
+        throw new Error('Article not found');
+      } else {
+        throw new Error(error.response?.data?.message || 'Failed to delete article');
+      }
     }
   }
 };

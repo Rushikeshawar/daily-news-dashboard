@@ -1,6 +1,7 @@
-// src/services/timeSaverService.js
+// src/services/timeSaverService.js - COMPLETE WITH LINKING FUNCTIONALITY
 import api from './api';
 
+// Mock data remains the same...
 const mockTimeSaverContent = [
   {
     id: '1',
@@ -8,8 +9,6 @@ const mockTimeSaverContent = [
     summary: 'Revolutionary AI advancement changes industry landscape with unprecedented capabilities',
     category: 'TECHNOLOGY',
     imageUrl: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=600&h=400&fit=crop',
-    iconName: 'Cpu',
-    bgColor: 'bg-blue-500',
     keyPoints: ['AI breakthrough', 'Industry impact', 'Future implications'],
     sourceUrl: 'https://example.com/tech-news',
     readTimeSeconds: 120,
@@ -17,44 +16,12 @@ const mockTimeSaverContent = [
     isPriority: true,
     contentType: 'DIGEST',
     contentGroup: 'breaking_critical',
-    tags: ['tech', 'ai', 'breakthrough', 'critical'],
-    publishedAt: new Date().toISOString()
-  },
-  {
-    id: '5',
-    title: 'Week in Review: Key Developments',
-    summary: 'Major stories that shaped this week\'s headlines across technology, business, and politics',
-    category: 'GENERAL',
-    imageUrl: 'https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=600&h=400&fit=crop',
-    iconName: 'Calendar',
-    bgColor: 'bg-indigo-500',
-    keyPoints: ['Weekly summary', 'Key developments', 'Major stories'],
-    sourceUrl: 'https://example.com/weekly-review',
-    readTimeSeconds: 180,
-    viewCount: 890,
-    isPriority: false,
-    contentType: 'HIGHLIGHTS',
-    contentGroup: 'weekly_highlights',
-    tags: ['weekly', 'highlights', 'review'],
-    publishedAt: new Date(Date.now() - 3*24*60*60*1000).toISOString()
-  },
-  {
-    id: '6',
-    title: 'Monthly Overview: Trending Topics',
-    summary: 'Most significant developments from the past month across all major sectors',
-    category: 'GENERAL',
-    imageUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=600&h=400&fit=crop',
-    iconName: 'BarChart3',
-    bgColor: 'bg-red-500',
-    keyPoints: ['Monthly overview', 'Trending topics', 'Significant developments'],
-    sourceUrl: 'https://example.com/monthly-overview',
-    readTimeSeconds: 300,
-    viewCount: 1450,
-    isPriority: false,
-    contentType: 'SUMMARY',
-    contentGroup: 'monthly_top',
-    tags: ['monthly', 'overview', 'trending'],
-    publishedAt: new Date(Date.now() - 15*24*60*60*1000).toISOString()
+    tags: 'tech,ai,breakthrough,critical',
+    linkedArticleId: null,
+    linkedAiArticleId: null,
+    publishedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
 ];
 
@@ -81,77 +48,367 @@ const categoryGroups = {
   changing_norms: 'Changing Norms'
 };
 
+const API_TIMEOUT = 10000;
+
 export const timeSaverService = {
-  // Get time saver content with filtering
-  getContent: async (params) => {
+  // Create time saver content
+  createContent: async (data) => {
+    console.log('TimeSaver Service: Creating content with data:', data);
+    
     try {
-      const response = await api.get('/time-saver/content', { params });
-      console.log('Time Saver content API response:', response.data);
+      if (!data.title || !data.summary || !data.category) {
+        throw new Error('Title, summary, and category are required');
+      }
+
+      const apiData = {
+        title: data.title.trim(),
+        summary: data.summary.trim(),
+        category: data.category,
+        imageUrl: data.imageUrl?.trim() || '',
+        keyPoints: Array.isArray(data.keyPoints) 
+          ? data.keyPoints.filter(point => point.trim()).join('|')
+          : (data.keyPoints || '').split('\n').filter(point => point.trim()).join('|'),
+        sourceUrl: data.sourceUrl?.trim() || '',
+        readTimeSeconds: data.readTimeSeconds ? parseInt(data.readTimeSeconds) : null,
+        isPriority: Boolean(data.isPriority),
+        contentType: data.contentType || 'DIGEST',
+        contentGroup: data.contentGroup || '',
+        tags: Array.isArray(data.tags)
+          ? data.tags.filter(tag => tag.trim()).join(',')
+          : (data.tags || '').split(',').filter(tag => tag.trim()).join(','),
+        // ADDED: Support for linking
+        linkedArticleId: data.linkedArticleId || null,
+        linkedAiArticleId: data.linkedAiArticleId || null
+      };
+
+      console.log('TimeSaver Service: Sending API data:', apiData);
+
+      const response = await Promise.race([
+        api.post('/time-saver/content', apiData),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
+      console.log('TimeSaver Service: API response:', response.data);
+      
+      const result = response.data?.data || response.data;
+      return {
+        success: true,
+        data: result
+      };
+
+    } catch (error) {
+      console.error('TimeSaver Service: Create content error:', error);
+      
+      if (error.response) {
+        const status = error.response.status;
+        const message = error.response.data?.message || 'Unknown error';
+        
+        if (status === 403) {
+          throw new Error('Access denied: Only EDITOR and AD_MANAGER roles can create content');
+        } else if (status === 401) {
+          throw new Error('Authentication required: Please log in to create content');
+        } else if (status === 429) {
+          throw new Error('Too many requests: Please wait a moment and try again');
+        } else if (status === 400) {
+          throw new Error(`Validation error: ${message}`);
+        } else {
+          throw new Error(`Server error: ${message}`);
+        }
+      } else if (error.request) {
+        throw new Error('Network error: Unable to reach the server. Please check your connection.');
+      } else if (error.message === 'Request timeout') {
+        throw new Error('Request timeout: The server is taking too long to respond');
+      } else {
+        throw new Error(error.message || 'Failed to create content');
+      }
+    }
+  },
+
+  // Get time saver content with filtering and pagination
+  getContent: async (params = {}) => {
+    try {
+      console.log('TimeSaver Service: Fetching content with params:', params);
+      
+      const response = await Promise.race([
+        api.get('/time-saver/content', { params }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
+      console.log('TimeSaver Service: Content API response:', response.data);
       
       const actualData = response.data?.data || response.data;
       return {
+        success: true,
         data: {
           content: actualData?.content || actualData || [],
           pagination: actualData?.pagination || {
-            page: params?.page || 1,
-            limit: params?.limit || 10,
+            page: parseInt(params.page) || 1,
+            limit: parseInt(params.limit) || 10,
             totalPages: 1,
-            totalCount: Array.isArray(actualData) ? actualData.length : 0,
+            totalCount: (actualData?.content || actualData || []).length,
             hasNext: false,
             hasPrev: false
           }
         }
       };
+
     } catch (error) {
-      console.warn('Time Saver content API unavailable, using mock data:', error.message);
+      console.warn('TimeSaver Service: Content API unavailable, using mock data:', error.message);
       
       let filteredContent = [...mockTimeSaverContent];
       
-      if (params?.category) {
+      if (params.category && params.category !== 'ALL') {
         filteredContent = filteredContent.filter(item => item.category === params.category);
       }
       
-      if (params?.contentGroup) {
+      if (params.contentGroup) {
         filteredContent = filteredContent.filter(item => item.contentGroup === params.contentGroup);
       }
       
-      if (params?.search) {
+      if (params.search) {
         const searchTerm = params.search.toLowerCase();
         filteredContent = filteredContent.filter(item => 
           item.title.toLowerCase().includes(searchTerm) ||
-          item.summary.toLowerCase().includes(searchTerm)
+          item.summary.toLowerCase().includes(searchTerm) ||
+          (item.tags && item.tags.toLowerCase().includes(searchTerm))
         );
       }
+
+      if (params.sortBy) {
+        filteredContent.sort((a, b) => {
+          let aVal = a[params.sortBy];
+          let bVal = b[params.sortBy];
+          
+          if (params.sortBy === 'publishedAt') {
+            aVal = new Date(aVal);
+            bVal = new Date(bVal);
+          }
+          
+          if (params.order === 'asc') {
+            return aVal > bVal ? 1 : -1;
+          } else {
+            return aVal < bVal ? 1 : -1;
+          }
+        });
+      }
+
+      const page = parseInt(params.page) || 1;
+      const limit = parseInt(params.limit) || 10;
+      const startIndex = (page - 1) * limit;
+      const endIndex = startIndex + limit;
+      const paginatedContent = filteredContent.slice(startIndex, endIndex);
       
       return {
+        success: true,
         data: {
-          content: filteredContent,
+          content: paginatedContent,
           pagination: {
-            page: params?.page || 1,
-            limit: params?.limit || 10,
-            totalPages: Math.ceil(filteredContent.length / (params?.limit || 10)),
+            page,
+            limit,
+            totalPages: Math.ceil(filteredContent.length / limit),
             totalCount: filteredContent.length,
-            hasNext: false,
-            hasPrev: false
+            hasNext: endIndex < filteredContent.length,
+            hasPrev: page > 1
           }
         }
       };
     }
   },
 
+  // Get single Time Saver content by ID
+  getContentById: async (id) => {
+    try {
+      console.log('TimeSaver Service: Fetching content by ID:', id);
+      
+      const response = await Promise.race([
+        api.get(`/time-saver/content/${id}`),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
+      const actualData = response.data?.data || response.data;
+      return {
+        success: true,
+        data: actualData?.content || actualData
+      };
+
+    } catch (error) {
+      console.warn('TimeSaver Service: Content by ID API unavailable, using mock data');
+      const mockItem = mockTimeSaverContent.find(item => item.id === id) || mockTimeSaverContent[0];
+      return {
+        success: true,
+        data: mockItem
+      };
+    }
+  },
+
+  // NEW: Get Time Saver content by linked article
+  getContentByArticle: async (articleId, articleType = 'news') => {
+    try {
+      console.log('TimeSaver Service: Fetching content by article:', articleId, articleType);
+      
+      const response = await Promise.race([
+        api.get(`/time-saver/by-article/${articleId}`, { 
+          params: { type: articleType } 
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
+      const actualData = response.data?.data || response.data;
+      return {
+        success: true,
+        data: {
+          content: actualData?.content || actualData || []
+        }
+      };
+
+    } catch (error) {
+      console.warn('TimeSaver Service: Content by article API unavailable');
+      return {
+        success: true,
+        data: {
+          content: []
+        }
+      };
+    }
+  },
+
+  // NEW: Link Time Saver to Article/AI Article
+  linkToArticle: async (timeSaverId, articleId, articleType = 'news') => {
+    try {
+      console.log('TimeSaver Service: Linking to article:', { timeSaverId, articleId, articleType });
+      
+      const response = await Promise.race([
+        api.post(`/time-saver/content/${timeSaverId}/link`, {
+          articleId,
+          articleType
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
+      console.log('TimeSaver Service: Link response:', response.data);
+      return {
+        success: true,
+        data: response.data
+      };
+
+    } catch (error) {
+      console.error('TimeSaver Service: Link error:', error);
+      
+      if (error.response?.status === 404) {
+        throw new Error('Article or Time Saver content not found');
+      } else if (error.response?.status === 400) {
+        throw new Error(error.response.data?.message || 'Invalid link request');
+      } else {
+        throw new Error('Failed to link content');
+      }
+    }
+  },
+
+  // NEW: Unlink Time Saver from Article/AI Article
+  unlinkFromArticle: async (timeSaverId, articleType = 'news') => {
+    try {
+      console.log('TimeSaver Service: Unlinking from article:', { timeSaverId, articleType });
+      
+      const response = await Promise.race([
+        api.post(`/time-saver/content/${timeSaverId}/unlink`, {
+          articleType
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
+      console.log('TimeSaver Service: Unlink response:', response.data);
+      return {
+        success: true,
+        data: response.data
+      };
+
+    } catch (error) {
+      console.error('TimeSaver Service: Unlink error:', error);
+      throw new Error('Failed to unlink content');
+    }
+  },
+
+  // Update content (with link support)
+  updateContent: async (id, data) => {
+    try {
+      console.log('TimeSaver Service: Updating content ID:', id, 'with data:', data);
+      
+      const apiData = {
+        ...data,
+        keyPoints: Array.isArray(data.keyPoints) 
+          ? data.keyPoints.join('|')
+          : data.keyPoints,
+        tags: Array.isArray(data.tags)
+          ? data.tags.join(',')
+          : data.tags,
+        readTimeSeconds: data.readTimeSeconds ? parseInt(data.readTimeSeconds) : null,
+        // ADDED: Support for linking updates
+        linkedArticleId: data.linkedArticleId !== undefined ? data.linkedArticleId : undefined,
+        linkedAiArticleId: data.linkedAiArticleId !== undefined ? data.linkedAiArticleId : undefined
+      };
+
+      const response = await Promise.race([
+        api.put(`/time-saver/content/${id}`, apiData),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
+      const result = response.data?.data || response.data;
+      return {
+        success: true,
+        data: result
+      };
+
+    } catch (error) {
+      console.error('TimeSaver Service: Update content error:', error);
+      
+      if (error.response?.status === 403) {
+        throw new Error('Access denied: You do not have permission to update content');
+      } else if (error.response?.status === 404) {
+        throw new Error('Content not found');
+      } else {
+        throw new Error(error.response?.data?.message || 'Failed to update content');
+      }
+    }
+  },
+
   // Get quick stats for dashboard
   getStats: async () => {
     try {
-      const response = await api.get('/time-saver/stats');
+      console.log('TimeSaver Service: Fetching stats');
+      
+      const response = await Promise.race([
+        api.get('/time-saver/stats'),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
       const actualData = response.data?.data || response.data;
       return {
+        success: true,
         data: {
           stats: actualData?.stats || actualData || mockStats
         }
       };
+
     } catch (error) {
-      console.warn('Time Saver stats API unavailable, using mock data');
+      console.warn('TimeSaver Service: Stats API unavailable, using mock data');
       return {
+        success: true,
         data: {
           stats: mockStats
         }
@@ -160,21 +417,32 @@ export const timeSaverService = {
   },
 
   // Get content by category group
-  getContentByCategory: async (group, params) => {
+  getContentByCategory: async (group, params = {}) => {
     try {
-      const response = await api.get(`/time-saver/category/${group}`, { params });
+      console.log('TimeSaver Service: Fetching category content for:', group);
+      
+      const response = await Promise.race([
+        api.get(`/time-saver/category/${group}`, { params }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
       const actualData = response.data?.data || response.data;
       return {
+        success: true,
         data: {
           content: actualData?.content || actualData || [],
           category: actualData?.category || group,
           totalCount: actualData?.totalCount || 0
         }
       };
+
     } catch (error) {
-      console.warn('Time Saver category content API unavailable, using mock data');
+      console.warn('TimeSaver Service: Category API unavailable, using mock data');
       const filteredContent = mockTimeSaverContent.filter(item => item.contentGroup === group);
       return {
+        success: true,
         data: {
           content: filteredContent,
           category: group,
@@ -185,17 +453,26 @@ export const timeSaverService = {
   },
 
   // Search time saver content
-  search: async (params) => {
+  search: async (params = {}) => {
     try {
-      const response = await api.get('/time-saver/search', { params });
+      console.log('TimeSaver Service: Searching content with params:', params);
+      
+      const response = await Promise.race([
+        api.get('/time-saver/search', { params }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
       const actualData = response.data?.data || response.data;
       return {
+        success: true,
         data: {
           content: actualData?.content || actualData || [],
           searchQuery: params.q,
           pagination: actualData?.pagination || {
-            page: params?.page || 1,
-            limit: params?.limit || 10,
+            page: 1,
+            limit: 10,
             totalPages: 1,
             totalCount: 0,
             hasNext: false,
@@ -203,15 +480,18 @@ export const timeSaverService = {
           }
         }
       };
+
     } catch (error) {
-      console.warn('Time Saver search API unavailable, using mock data');
+      console.warn('TimeSaver Service: Search API unavailable, using mock data');
       const searchTerm = params.q?.toLowerCase() || '';
       const filteredContent = mockTimeSaverContent.filter(item => 
         item.title.toLowerCase().includes(searchTerm) ||
-        item.summary.toLowerCase().includes(searchTerm)
+        item.summary.toLowerCase().includes(searchTerm) ||
+        (item.tags && item.tags.toLowerCase().includes(searchTerm))
       );
       
       return {
+        success: true,
         data: {
           content: filteredContent,
           searchQuery: params.q,
@@ -228,17 +508,28 @@ export const timeSaverService = {
     }
   },
 
-  // Get analytics (for admins/managers)
-  getAnalytics: async (params) => {
+  // Get analytics
+  getAnalytics: async (params = {}) => {
     try {
-      const response = await api.get('/time-saver/analytics', { params });
+      console.log('TimeSaver Service: Fetching analytics');
+      
+      const response = await Promise.race([
+        api.get('/time-saver/analytics', { params }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
       const actualData = response.data?.data || response.data;
       return {
+        success: true,
         data: actualData?.analytics || actualData
       };
+
     } catch (error) {
-      console.warn('Time Saver analytics API unavailable, using mock data');
+      console.warn('TimeSaver Service: Analytics API unavailable, using mock data');
       return {
+        success: true,
         data: {
           overview: {
             totalContent: 156,
@@ -267,148 +558,94 @@ export const timeSaverService = {
   // Track content view
   trackView: async (id) => {
     try {
-      await api.post(`/time-saver/content/${id}/view`);
-      return { data: { success: true } };
+      console.log('TimeSaver Service: Tracking view for ID:', id);
+      
+      await Promise.race([
+        api.post(`/time-saver/content/${id}/view`),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 5000)
+        )
+      ]);
+
+      return { success: true };
     } catch (error) {
-      console.warn('Time Saver view tracking unavailable');
-      return { data: { success: true } };
+      console.warn('TimeSaver Service: View tracking failed (non-critical):', error.message);
+      return { success: false, error: error.message };
     }
   },
 
   // Track content interaction
   trackInteraction: async (id, interactionType) => {
     try {
-      await api.post(`/time-saver/content/${id}/interaction`, { interactionType });
-      return { data: { success: true } };
+      console.log('TimeSaver Service: Tracking interaction for ID:', id, 'Type:', interactionType);
+      
+      await Promise.race([
+        api.post(`/time-saver/content/${id}/interaction`, { interactionType }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 5000)
+        )
+      ]);
+
+      return { success: true };
     } catch (error) {
-      console.warn('Time Saver interaction tracking unavailable');
-      return { data: { success: true } };
+      console.warn('TimeSaver Service: Interaction tracking failed (non-critical):', error.message);
+      return { success: false, error: error.message };
     }
   },
 
-  // Create time saver content (Admin only)
-  createContent: async (data) => {
+  // Delete content
+  deleteContent: async (id) => {
     try {
-      const response = await api.post('/time-saver/content', data);
-      const actualData = response.data?.data || response.data;
-      return {
-        data: actualData?.content || actualData
-      };
+      console.log('TimeSaver Service: Deleting content ID:', id);
+      
+      await Promise.race([
+        api.delete(`/time-saver/content/${id}`),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
+        )
+      ]);
+
+      return { success: true };
+
     } catch (error) {
-      console.warn('Create Time Saver content API unavailable');
-      return {
-        data: {
-          id: Date.now().toString(),
-          ...data,
-          viewCount: 0,
-          publishedAt: new Date().toISOString()
-        }
-      };
+      console.error('TimeSaver Service: Delete content error:', error);
+      
+      if (error.response?.status === 403) {
+        throw new Error('Access denied: You do not have permission to delete content');
+      } else if (error.response?.status === 404) {
+        throw new Error('Content not found');
+      } else {
+        throw new Error(error.response?.data?.message || 'Failed to delete content');
+      }
     }
   },
 
-  // Get category groups for UI
-  getCategoryGroups: () => {
-    return categoryGroups;
-  },
+  // Utility functions
+  getCategoryGroups: () => categoryGroups,
+  
+  getContentTypes: () => [
+    { value: 'DIGEST', label: 'News Digest' },
+    { value: 'QUICK_UPDATE', label: 'Quick Update' },
+    { value: 'BRIEFING', label: 'Briefing' },
+    { value: 'SUMMARY', label: 'Summary' },
+    { value: 'HIGHLIGHTS', label: 'Highlights' },
+    { value: 'VIRAL', label: 'Viral Content' },
+    { value: 'SOCIAL', label: 'Social Buzz' },
+    { value: 'BREAKING', label: 'Breaking News' }
+  ],
 
-  // Get breaking news
-  getBreakingNews: async (params) => {
-    try {
-      const response = await api.get('/time-saver/breaking-news', { params });
-      const actualData = response.data?.data || response.data;
-      return {
-        data: {
-          news: actualData?.news || actualData || []
-        }
-      };
-    } catch (error) {
-      console.warn('Breaking news API unavailable, using mock data');
-      const breakingNews = mockTimeSaverContent.filter(item => 
-        item.isPriority || item.contentGroup === 'breaking_critical'
-      );
-      return {
-        data: {
-          news: breakingNews
-        }
-      };
-    }
-  },
+  getCategories: () => [
+    { value: 'TECHNOLOGY', label: 'Technology' },
+    { value: 'BUSINESS', label: 'Business' },
+    { value: 'SOCIETY', label: 'Society' },
+    { value: 'ENTERTAINMENT', label: 'Entertainment' },
+    { value: 'GENERAL', label: 'General' },
+    { value: 'POLITICS', label: 'Politics' },
+    { value: 'SPORTS', label: 'Sports' },
+    { value: 'SCIENCE', label: 'Science' },
+    { value: 'HEALTH', label: 'Health' },
+    { value: 'CULTURE', label: 'Culture' }
+  ]
+};
 
-  // Get trending updates
-  getTrendingUpdates: async (params) => {
-    try {
-      const response = await api.get('/time-saver/trending-updates', { params });
-      const actualData = response.data?.data || response.data;
-      return {
-        data: {
-          updates: actualData?.updates || actualData || []
-        }
-      };
-    } catch (error) {
-      console.warn('Trending updates API unavailable, using mock data');
-      const trendingUpdates = mockTimeSaverContent
-        .filter(item => item.contentGroup === 'viral_buzz')
-        .sort((a, b) => b.viewCount - a.viewCount);
-      return {
-        data: {
-          updates: trendingUpdates
-        }
-      };
-    }
-  }
-};: new Date().toISOString()
-  },
-  {
-    id: '2',
-    title: 'Market Update: Stocks Reach New Heights',
-    summary: 'Major indices hit record levels amid economic optimism and strong earnings reports',
-    category: 'BUSINESS',
-    imageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=600&h=400&fit=crop',
-    iconName: 'TrendingUp',
-    bgColor: 'bg-green-500',
-    keyPoints: ['Stock markets', 'Record highs', 'Economic growth'],
-    sourceUrl: 'https://example.com/market-news',
-    readTimeSeconds: 45,
-    viewCount: 1800,
-    isPriority: false,
-    contentType: 'QUICK_UPDATE',
-    contentGroup: 'today_new',
-    tags: ['business', 'stocks', 'market', 'today'],
-    publishedAt: new Date().toISOString()
-  },
-  {
-    id: '3',
-    title: 'Viral Video Takes Internet by Storm',
-    summary: 'Unexpected clip garners millions of views in hours, sparking global conversation',
-    category: 'ENTERTAINMENT',
-    imageUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&h=400&fit=crop',
-    iconName: 'Video',
-    bgColor: 'bg-purple-500',
-    keyPoints: ['Viral content', 'Social media', 'Internet sensation'],
-    sourceUrl: 'https://example.com/viral-news',
-    readTimeSeconds: 30,
-    viewCount: 5200,
-    isPriority: false,
-    contentType: 'VIRAL',
-    contentGroup: 'viral_buzz',
-    tags: ['viral', 'trending', 'social', 'entertainment'],
-    publishedAt: new Date().toISOString()
-  },
-  {
-    id: '4',
-    title: 'Society Shifts: New Cultural Paradigm Emerges',
-    summary: 'Generational changes reshape societal norms and values across multiple demographics',
-    category: 'SOCIETY',
-    imageUrl: 'https://images.unsplash.com/photo-1573164713714-d95e436ab8d6?w=600&h=400&fit=crop',
-    iconName: 'Users',
-    bgColor: 'bg-orange-500',
-    keyPoints: ['Cultural shift', 'Generational change', 'New norms'],
-    sourceUrl: 'https://example.com/society-news',
-    readTimeSeconds: 150,
-    viewCount: 1200,
-    isPriority: false,
-    contentType: 'SOCIAL',
-    contentGroup: 'changing_norms',
-    tags: ['society', 'culture', 'change', 'norms', 'social'],
-    publishedAt
+export default timeSaverService;

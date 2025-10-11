@@ -1,7 +1,7 @@
-// src/pages/ai-ml/AiMlTrending.js
+// src/pages/ai-ml/AiMlTrending.js - Fixed version
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, TrendingUp, Brain, Fire, Clock } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Brain, Flame, Clock } from 'lucide-react';
 import { aiMlService } from '../../services/aiMlService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -56,7 +56,7 @@ const AiMlTrending = () => {
           </button>
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-              <Fire className="w-8 h-8 mr-3 text-red-500" />
+              <Flame className="w-8 h-8 mr-3 text-red-500" />
               Trending AI/ML News
             </h1>
             <p className="text-gray-600">Most popular AI/ML articles right now</p>
@@ -127,7 +127,7 @@ const AiMlTrending = () => {
                     </span>
                     {article.relevanceScore && (
                       <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                        {article.relevanceScore.toFixed(1)}/10
+                        {typeof article.relevanceScore === 'number' ? article.relevanceScore.toFixed(1) : article.relevanceScore}/10
                       </span>
                     )}
                   </div>

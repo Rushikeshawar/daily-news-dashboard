@@ -1,4 +1,4 @@
-// src/pages/articles/ArticleDetail.js
+// src/pages/articles/ArticleDetail.js - WITH TIME SAVER INTEGRATION
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
@@ -10,9 +10,12 @@ import {
   Trash2,
   Check,
   X,
-  Tag
+  Tag,
+  Clock,
+  Plus
 } from 'lucide-react';
 import { articleService } from '../../services/articleService';
+import { timeSaverService } from '../../services/timeSaverService';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
@@ -24,7 +27,9 @@ const ArticleDetail = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [article, setArticle] = useState(null);
+  const [timeSavers, setTimeSavers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingTimeSavers, setLoadingTimeSavers] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [approvalModal, setApprovalModal] = useState({ 
     open: false, 
@@ -34,9 +39,11 @@ const ArticleDetail = () => {
 
   const canEdit = user?.role === 'ADMIN' || user?.role === 'AD_MANAGER' || article?.authorId === user?.id;
   const canApprove = (user?.role === 'AD_MANAGER' || user?.role === 'ADMIN') && article?.status === 'PENDING';
+  const canCreateTimeSaver = ['EDITOR', 'AD_MANAGER'].includes(user?.role);
 
   useEffect(() => {
     fetchArticle();
+    fetchTimeSavers();
   }, [id]);
 
   const fetchArticle = async () => {
@@ -45,17 +52,14 @@ const ArticleDetail = () => {
       const response = await articleService.getArticle(id);
       console.log('Article detail response:', response.data);
       
-      // Handle the backend response structure
       let articleData;
       if (response.data && response.data.success && response.data.data) {
-        // Check if data is nested under 'article' key
         if (response.data.data.article) {
           articleData = response.data.data.article;
         } else {
           articleData = response.data.data;
         }
       } else if (response.data && response.data.article) {
-        // Direct article object
         articleData = response.data.article;
       } else {
         articleData = response.data;
@@ -69,6 +73,20 @@ const ArticleDetail = () => {
       navigate('/articles');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTimeSavers = async () => {
+    try {
+      setLoadingTimeSavers(true);
+      const response = await timeSaverService.getContentByArticle(id, 'news');
+      console.log('Time Savers response:', response.data);
+      setTimeSavers(response.data.content || []);
+    } catch (error) {
+      console.error('Fetch Time Savers error:', error);
+      // Don't show error toast - it's optional content
+    } finally {
+      setLoadingTimeSavers(false);
     }
   };
 
@@ -97,10 +115,14 @@ const ArticleDetail = () => {
       
       setApprovalModal({ open: false, action: null });
       setApprovalComment('');
-      fetchArticle(); // Refresh to show updated status
+      fetchArticle();
     } catch (error) {
       toast.error(`Failed to ${approvalModal.action} article`);
     }
+  };
+
+  const handleCreateTimeSaver = () => {
+    navigate(`/time-saver/create?articleId=${id}&linkType=news`);
   };
 
   const getStatusBadge = (status) => {
@@ -126,6 +148,12 @@ const ArticleDetail = () => {
     } catch (error) {
       return 'Invalid Date';
     }
+  };
+
+  const formatReadTime = (seconds) => {
+    if (!seconds) return 'Quick read';
+    const minutes = Math.ceil(seconds / 60);
+    return `${minutes}m read`;
   };
 
   if (loading) {
@@ -210,7 +238,6 @@ const ArticleDetail = () => {
 
       {/* Article Content */}
       <div className="card">
-        {/* Featured Image */}
         {article.featuredImage && (
           <div className="mb-6">
             <img
@@ -224,12 +251,10 @@ const ArticleDetail = () => {
           </div>
         )}
 
-        {/* Title */}
         <h1 className="text-4xl font-bold text-gray-900 mb-4">
           {article.headline || 'Untitled Article'}
         </h1>
 
-        {/* Meta Information */}
         <div className="flex flex-wrap items-center gap-6 text-sm text-gray-600 mb-6 pb-6 border-b">
           <div className="flex items-center">
             <User className="w-4 h-4 mr-2" />
@@ -253,7 +278,6 @@ const ArticleDetail = () => {
           )}
         </div>
 
-        {/* Brief Content */}
         {article.briefContent && (
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-3">Summary</h2>
@@ -265,7 +289,6 @@ const ArticleDetail = () => {
           </div>
         )}
 
-        {/* Full Content */}
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-3">Full Article</h2>
           <div className="prose max-w-none">
@@ -285,7 +308,6 @@ const ArticleDetail = () => {
           </div>
         </div>
 
-        {/* Tags */}
         {article.tags && article.tags.length > 0 && (
           <div className="mb-6">
             <h3 className="text-lg font-medium text-gray-900 mb-2">Tags</h3>
@@ -306,15 +328,90 @@ const ArticleDetail = () => {
           </div>
         )}
 
-        {/* Rejection Comments */}
         {article.status === 'REJECTED' && article.rejectionComments && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <h3 className="text-lg font-medium text-red-900 mb-2">Rejection Reason</h3>
             <p className="text-red-700">{article.rejectionComments}</p>
           </div>
         )}
+      </div>
 
-        
+      {/* Time Saver Content Section */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <Clock className="w-6 h-6 text-blue-600 mr-2" />
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Time Saver Content</h2>
+              <p className="text-sm text-gray-600">Quick summaries linked to this article</p>
+            </div>
+          </div>
+          {canCreateTimeSaver && (
+            <button
+              onClick={handleCreateTimeSaver}
+              className="btn-primary flex items-center"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Time Saver
+            </button>
+          )}
+        </div>
+
+        {loadingTimeSavers ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner text="Loading Time Savers..." />
+          </div>
+        ) : timeSavers.length === 0 ? (
+          <div className="text-center py-8 bg-gray-50 rounded-lg">
+            <Clock className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+            <p className="text-gray-600 mb-4">No Time Saver content linked to this article yet</p>
+            {canCreateTimeSaver && (
+              <button
+                onClick={handleCreateTimeSaver}
+                className="btn-outline"
+              >
+                Create First Time Saver
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {timeSavers.map((ts) => (
+              <div
+                key={ts.id}
+                className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                        {ts.contentType?.replace('_', ' ')}
+                      </span>
+                      {ts.isPriority && (
+                        <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium">
+                          Priority
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="font-semibold text-gray-900 mb-1">{ts.title}</h3>
+                    <p className="text-gray-600 text-sm mb-2">{ts.summary}</p>
+                    <div className="flex items-center text-xs text-gray-500 space-x-4">
+                      <span>{formatReadTime(ts.readTimeSeconds)}</span>
+                      <span>{ts.viewCount || 0} views</span>
+                      <span>{formatDate(ts.publishedAt)}</span>
+                    </div>
+                  </div>
+                  <Link
+                    to={`/time-saver/content/${ts.id}`}
+                    className="text-blue-600 hover:text-blue-800 text-sm font-medium ml-4"
+                  >
+                    View
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Delete Confirmation Dialog */}

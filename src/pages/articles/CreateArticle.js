@@ -1,4 +1,3 @@
- 
 // src/pages/articles/CreateArticle.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +17,7 @@ const CreateArticle = () => {
       toast.success('Article created successfully! It will be reviewed before publication.');
       navigate('/articles');
     } catch (error) {
-      toast.error('Failed to create article');
+      toast.error(error.message || 'Failed to create article');
       console.error('Create article error:', error);
     } finally {
       setLoading(false);
@@ -48,4 +47,3 @@ const CreateArticle = () => {
 };
 
 export default CreateArticle;
-

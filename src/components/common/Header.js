@@ -1,10 +1,10 @@
- 
-// src/components/common/Header.js
+// src/components/common/Header.js - Updated with LINES Logo
 import React, { useState } from 'react';
 import { Bell, User, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useNotifications } from '../../context/NotificationContext';
 import { Link } from 'react-router-dom';
+import LinesLogo from './LinesLogo';
 
 const Header = ({ sidebarOpen, setSidebarOpen }) => {
   const { user, logout } = useAuth();
@@ -31,7 +31,8 @@ const Header = ({ sidebarOpen, setSidebarOpen }) => {
               {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
             <div className="flex-shrink-0 flex items-center ml-4 lg:ml-0">
-              <h1 className="text-2xl font-bold text-gray-900">Daily News</h1>
+              {/* Replace Daily News text with LINES Logo */}
+              <LinesLogo height={32} showTagline={false} />
             </div>
           </div>
 

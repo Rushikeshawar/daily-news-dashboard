@@ -1,19 +1,32 @@
 // src/pages/ai-ml/AiMlDetail.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Brain, Calendar, Eye, Share2, Bookmark, TrendingUp, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Brain, Calendar, Eye, Share2, Bookmark, TrendingUp, ExternalLink, Plus, Clock } from 'lucide-react';
 import { aiMlService } from '../../services/aiMlService';
+import { timeSaverService } from '../../services/timeSaverService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 const AiMlDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [timeSavers, setTimeSavers] = useState([]);
+  const [loadingTimeSavers, setLoadingTimeSavers] = useState(false);
+
+  const canCreateTimeSaver = ['EDITOR', 'AD_MANAGER'].includes(user?.role);
 
   useEffect(() => {
     fetchArticle();
+  }, [id]);
+
+  useEffect(() => {
+    if (id) {
+      fetchTimeSavers();
+    }
   }, [id]);
 
   const fetchArticle = async () => {
@@ -30,6 +43,19 @@ const AiMlDetail = () => {
       navigate('/ai-ml');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchTimeSavers = async () => {
+    try {
+      setLoadingTimeSavers(true);
+      const response = await timeSaverService.getContentByArticle(id, 'ai');
+      console.log('Time Savers response:', response.data);
+      setTimeSavers(response.data.content || []);
+    } catch (error) {
+      console.error('Fetch Time Savers error:', error);
+    } finally {
+      setLoadingTimeSavers(false);
     }
   };
 
@@ -61,6 +87,23 @@ const AiMlDetail = () => {
       console.error('Bookmark error:', error);
       toast.error('Failed to bookmark article');
     }
+  };
+
+  const handleCreateTimeSaver = () => {
+    navigate(`/time-saver/create?aiArticleId=${id}&linkType=ai`);
+  };
+
+  const handleTimeSaverClick = (timeSaverId) => {
+    navigate(`/time-saver/${timeSaverId}`);
+  };
+
+  // Helper function to format relevance score safely
+  const formatRelevanceScore = (score) => {
+    if (!score) return 'N/A';
+    if (typeof score === 'number') {
+      return `${score.toFixed(1)}/10`;
+    }
+    return typeof score === 'string' ? score : 'N/A';
   };
 
   if (loading) {
@@ -176,7 +219,7 @@ const AiMlDetail = () => {
             <div className="flex items-center">
               <span className="font-medium mr-1">Relevance:</span>
               <span className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
-                {article.relevanceScore.toFixed(1)}/10
+                {formatRelevanceScore(article.relevanceScore)}
               </span>
             </div>
           )}
@@ -278,9 +321,79 @@ const AiMlDetail = () => {
           </div>
         )}
       </div>
+
+      {/* Time Saver Content Section */}
+      <div className="card">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <Clock className="w-5 h-5 mr-2 text-purple-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Time Saver Summaries</h2>
+          </div>
+          {canCreateTimeSaver && (
+            <button
+              onClick={handleCreateTimeSaver}
+              className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Time Saver
+            </button>
+          )}
+        </div>
+
+        {loadingTimeSavers ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner size="md" text="Loading Time Savers..." />
+          </div>
+        ) : timeSavers.length > 0 ? (
+          <div className="space-y-4">
+            {timeSavers.map((timeSaver) => (
+              <div
+                key={timeSaver.id}
+                onClick={() => handleTimeSaverClick(timeSaver.id)}
+                className="p-4 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 mb-2">{timeSaver.title}</h3>
+                    <p className="text-gray-700 text-sm mb-3">{timeSaver.summary}</p>
+                    <div className="flex items-center space-x-4 text-xs text-gray-600">
+                      <span className="px-2 py-1 bg-purple-200 text-purple-800 rounded">
+                        {timeSaver.contentType?.replace('_', ' ')}
+                      </span>
+                      {timeSaver.readTimeSeconds && (
+                        <span className="flex items-center">
+                          <Clock className="w-3 h-3 mr-1" />
+                          {Math.ceil(timeSaver.readTimeSeconds / 60)} min read
+                        </span>
+                      )}
+                      {timeSaver.isPriority && (
+                        <span className="px-2 py-1 bg-red-100 text-red-800 rounded font-medium">
+                          Priority
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <Clock className="w-12 h-12 mx-auto mb-3 text-gray-400" />
+            <p>No Time Saver summaries available for this article yet.</p>
+            {canCreateTimeSaver && (
+              <button
+                onClick={handleCreateTimeSaver}
+                className="mt-4 text-purple-600 hover:text-purple-700 font-medium"
+              >
+                Create the first one
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 export default AiMlDetail;
-

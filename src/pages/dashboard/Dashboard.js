@@ -1,4 +1,4 @@
-// src/pages/dashboard/Dashboard.js
+// src/pages/dashboard/Dashboard.js - FIXED VERSION WITH REAL DATA
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -16,12 +16,14 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { analyticsService } from '../../services/analyticsService';
+import { articleService } from '../../services/articleService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
+  const [realArticleStats, setRealArticleStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -35,11 +37,6 @@ const Dashboard = () => {
     },
     ads: {
       active: 12
-    },
-    articles: {
-      pending: 8,
-      published: 187,
-      rejected: 5
     },
     chartData: {
       dailyViews: [1200, 1400, 1100, 1600, 1800, 2000, 1750],
@@ -94,9 +91,25 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
       console.log('Fetching dashboard data...');
-      const response = await analyticsService.getDashboard();
-      console.log('Dashboard data received:', response.data);
-      setDashboardData(response.data);
+      
+      // Fetch both analytics data and real article statistics
+      const [analyticsResponse, realStatsResponse] = await Promise.all([
+        analyticsService.getDashboard().catch(err => {
+          console.warn('Analytics API failed, using mock data:', err.message);
+          return { data: mockDashboardData };
+        }),
+        fetchRealArticleStats().catch(err => {
+          console.warn('Real article stats failed:', err.message);
+          return null;
+        })
+      ]);
+
+      console.log('Analytics data received:', analyticsResponse.data);
+      console.log('Real article stats received:', realStatsResponse);
+      
+      setDashboardData(analyticsResponse.data);
+      setRealArticleStats(realStatsResponse);
+      
     } catch (error) {
       console.error('Dashboard error:', error);
       // Use mock data when API fails
@@ -111,13 +124,68 @@ const Dashboard = () => {
     }
   };
 
+  const fetchRealArticleStats = async () => {
+    try {
+      console.log('Fetching real article statistics...');
+      
+      // Fetch different article status counts
+      const [
+        pendingResponse,
+        allArticlesResponse
+      ] = await Promise.all([
+        articleService.getPendingArticles({ limit: 1000 }), // Get all pending
+        articleService.getArticles({ limit: 1000 }) // Get all articles
+      ]);
+
+      const pendingArticles = pendingResponse.data?.articles || [];
+      const allArticles = allArticlesResponse.data?.articles || [];
+      
+      // Count articles by status
+      const statusCounts = {
+        pending: 0,
+        published: 0,
+        approved: 0,
+        rejected: 0,
+        total: allArticles.length
+      };
+
+      allArticles.forEach(article => {
+        const status = article.status ? article.status.toLowerCase() : 'unknown';
+        switch(status) {
+          case 'pending':
+            statusCounts.pending++;
+            break;
+          case 'published':
+            statusCounts.published++;
+            break;
+          case 'approved':
+            statusCounts.approved++;
+            break;
+          case 'rejected':
+            statusCounts.rejected++;
+            break;
+        }
+      });
+
+      // For testing mode, use pending articles count
+      statusCounts.pending = pendingArticles.length;
+
+      console.log('Real article statistics:', statusCounts);
+      
+      return statusCounts;
+    } catch (error) {
+      console.error('Failed to fetch real article stats:', error);
+      return null;
+    }
+  };
+
   const getStatsCards = () => {
     if (!dashboardData) return [];
 
     const baseCards = [
       {
         title: 'Total Articles',
-        value: dashboardData.overview?.totalArticles || 0,
+        value: realArticleStats?.total || dashboardData.overview?.totalArticles || 0,
         icon: FileText,
         color: 'bg-blue-500',
         link: '/articles'
@@ -143,7 +211,7 @@ const Dashboard = () => {
         },
         {
           title: 'Total Revenue',
-          value: `$${dashboardData.overview?.totalRevenue?.toLocaleString() || '0'}`,
+          value: `₹${dashboardData.overview?.totalRevenue?.toLocaleString() || '0'}`,
           icon: TrendingUp,
           color: 'bg-yellow-500',
           link: '/analytics'
@@ -164,7 +232,7 @@ const Dashboard = () => {
     if (user?.role === 'AD_MANAGER' || user?.role === 'ADMIN') {
       baseCards.push({
         title: 'Pending Approvals',
-        value: dashboardData.articles?.pending || 0,
+        value: realArticleStats?.pending || 0, // Use real data here
         icon: Clock,
         color: 'bg-orange-500',
         link: '/articles/pending'
@@ -190,7 +258,8 @@ const Dashboard = () => {
         icon: CheckCircle,
         link: '/articles/pending',
         color: 'bg-green-500',
-        roles: ['AD_MANAGER', 'ADMIN']
+        roles: ['AD_MANAGER', 'ADMIN'],
+        badge: realArticleStats?.pending > 0 ? realArticleStats.pending : null
       },
       {
         title: 'Create Advertisement',
@@ -250,6 +319,7 @@ const Dashboard = () => {
               {error}
             </div>
           )}
+      
         </div>
         
         <button
@@ -292,7 +362,7 @@ const Dashboard = () => {
             <Link
               key={index}
               to={action.link}
-              className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200"
+              className="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200 relative"
             >
               <div className={`p-2 rounded-lg ${action.color}`}>
                 <action.icon className="w-5 h-5 text-white" />
@@ -301,6 +371,11 @@ const Dashboard = () => {
                 <p className="font-medium text-gray-900">{action.title}</p>
                 <p className="text-sm text-gray-600">{action.description}</p>
               </div>
+              {action.badge && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
+                  {action.badge > 9 ? '9+' : action.badge}
+                </span>
+              )}
               <ArrowRight className="w-5 h-5 text-gray-400" />
             </Link>
           ))}
@@ -399,15 +474,15 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Article Status Summary */}
-      {(user?.role === 'AD_MANAGER' || user?.role === 'ADMIN') && dashboardData?.articles && (
+      {/* Article Status Summary - Now with REAL data */}
+      {(user?.role === 'AD_MANAGER' || user?.role === 'ADMIN') && realArticleStats && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Published</p>
                 <p className="text-3xl font-bold text-green-600">
-                  {dashboardData.articles.published || 0}
+                  {realArticleStats.published || 0}
                 </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-500" />
@@ -419,7 +494,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Pending</p>
                 <p className="text-3xl font-bold text-yellow-600">
-                  {dashboardData.articles.pending || 0}
+                  {realArticleStats.pending || 0}
                 </p>
               </div>
               <Clock className="w-8 h-8 text-yellow-500" />
@@ -431,7 +506,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Rejected</p>
                 <p className="text-3xl font-bold text-red-600">
-                  {dashboardData.articles.rejected || 0}
+                  {realArticleStats.rejected || 0}
                 </p>
               </div>
               <XCircle className="w-8 h-8 text-red-500" />
