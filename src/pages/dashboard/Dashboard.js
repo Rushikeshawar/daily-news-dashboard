@@ -1,86 +1,24 @@
-// src/pages/dashboard/Dashboard.js - FIXED VERSION WITH REAL DATA
+// src/pages/dashboard/Dashboard.js - REAL DATA ONLY
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  FileText, 
-  Users, 
-  Target, 
-  TrendingUp, 
-  Clock, 
-  CheckCircle, 
-  XCircle,
-  Eye,
-  Plus,
-  ArrowRight,
-  RefreshCw
+  FileText, Users, Target, TrendingUp, Clock, CheckCircle, 
+  XCircle, Eye, Plus, ArrowRight, RefreshCw, DollarSign
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { analyticsService } from '../../services/analyticsService';
-import { articleService } from '../../services/articleService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { 
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, 
+  ResponsiveContainer, PieChart, Pie, Cell 
+} from 'recharts';
+import toast from 'react-hot-toast';
 
 const Dashboard = () => {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
-  const [realArticleStats, setRealArticleStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Mock data for when API is unavailable
-  const mockDashboardData = {
-    overview: {
-      totalArticles: 245,
-      totalUsers: 1200,
-      totalViews: 125000,
-      totalRevenue: 15750
-    },
-    ads: {
-      active: 12
-    },
-    chartData: {
-      dailyViews: [1200, 1400, 1100, 1600, 1800, 2000, 1750],
-      categories: {
-        'Technology': 85,
-        'Business': 60,
-        'Sports': 50,
-        'Politics': 35,
-        'Entertainment': 15
-      }
-    },
-    topArticles: [
-      {
-        id: '1',
-        headline: 'Breaking: New Technology Breakthrough',
-        author: 'John Smith',
-        views: 15420
-      },
-      {
-        id: '2',
-        headline: 'Market Analysis: Q3 Results',
-        author: 'Jane Doe',
-        views: 12350
-      },
-      {
-        id: '3',
-        headline: 'Sports Update: Championship Finals',
-        author: 'Mike Johnson',
-        views: 10890
-      },
-      {
-        id: '4',
-        headline: 'Political News: Latest Updates',
-        author: 'Sarah Wilson',
-        views: 9876
-      },
-      {
-        id: '5',
-        headline: 'Entertainment: Movie Reviews',
-        author: 'Tom Brown',
-        views: 8765
-      }
-    ]
-  };
 
   useEffect(() => {
     fetchDashboardData();
@@ -90,129 +28,64 @@ const Dashboard = () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching dashboard data...');
       
-      // Fetch both analytics data and real article statistics
-      const [analyticsResponse, realStatsResponse] = await Promise.all([
-        analyticsService.getDashboard().catch(err => {
-          console.warn('Analytics API failed, using mock data:', err.message);
-          return { data: mockDashboardData };
-        }),
-        fetchRealArticleStats().catch(err => {
-          console.warn('Real article stats failed:', err.message);
-          return null;
-        })
-      ]);
-
-      console.log('Analytics data received:', analyticsResponse.data);
-      console.log('Real article stats received:', realStatsResponse);
+      const response = await analyticsService.getDashboard();
       
-      setDashboardData(analyticsResponse.data);
-      setRealArticleStats(realStatsResponse);
+      if (!response.data) {
+        throw new Error('No data received from server');
+      }
+      
+      setDashboardData(response.data);
       
     } catch (error) {
       console.error('Dashboard error:', error);
-      // Use mock data when API fails
-      setDashboardData(mockDashboardData);
-      
-      // Only set error for display if it's not a 404 or 401
-      if (error.response?.status !== 404 && error.response?.status !== 401) {
-        setError('Using demo data - API temporarily unavailable');
-      }
+      setError(error.response?.data?.message || 'Failed to load dashboard data');
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchRealArticleStats = async () => {
-    try {
-      console.log('Fetching real article statistics...');
-      
-      // Fetch different article status counts
-      const [
-        pendingResponse,
-        allArticlesResponse
-      ] = await Promise.all([
-        articleService.getPendingArticles({ limit: 1000 }), // Get all pending
-        articleService.getArticles({ limit: 1000 }) // Get all articles
-      ]);
-
-      const pendingArticles = pendingResponse.data?.articles || [];
-      const allArticles = allArticlesResponse.data?.articles || [];
-      
-      // Count articles by status
-      const statusCounts = {
-        pending: 0,
-        published: 0,
-        approved: 0,
-        rejected: 0,
-        total: allArticles.length
-      };
-
-      allArticles.forEach(article => {
-        const status = article.status ? article.status.toLowerCase() : 'unknown';
-        switch(status) {
-          case 'pending':
-            statusCounts.pending++;
-            break;
-          case 'published':
-            statusCounts.published++;
-            break;
-          case 'approved':
-            statusCounts.approved++;
-            break;
-          case 'rejected':
-            statusCounts.rejected++;
-            break;
-        }
-      });
-
-      // For testing mode, use pending articles count
-      statusCounts.pending = pendingArticles.length;
-
-      console.log('Real article statistics:', statusCounts);
-      
-      return statusCounts;
-    } catch (error) {
-      console.error('Failed to fetch real article stats:', error);
-      return null;
-    }
-  };
-
   const getStatsCards = () => {
-    if (!dashboardData) return [];
+    if (!dashboardData?.overview) return [];
 
     const baseCards = [
       {
         title: 'Total Articles',
-        value: realArticleStats?.total || dashboardData.overview?.totalArticles || 0,
+        value: dashboardData.overview.totalArticles?.toLocaleString() || '0',
         icon: FileText,
         color: 'bg-blue-500',
         link: '/articles'
       },
       {
         title: 'Total Views',
-        value: dashboardData.overview?.totalViews?.toLocaleString() || '0',
+        value: dashboardData.overview.totalViews?.toLocaleString() || '0',
         icon: Eye,
         color: 'bg-green-500',
+        link: '/analytics'
+      },
+      {
+        title: 'Total Shares',
+        value: dashboardData.overview.totalShares?.toLocaleString() || '0',
+        icon: TrendingUp,
+        color: 'bg-purple-500',
         link: '/analytics'
       }
     ];
 
-    // Add role-specific cards
     if (user?.role === 'ADMIN') {
       baseCards.push(
         {
           title: 'Total Users',
-          value: dashboardData.overview?.totalUsers || 0,
+          value: dashboardData.overview.totalUsers?.toLocaleString() || '0',
           icon: Users,
-          color: 'bg-purple-500',
+          color: 'bg-indigo-500',
           link: '/users'
         },
         {
-          title: 'Total Revenue',
-          value: `₹${dashboardData.overview?.totalRevenue?.toLocaleString() || '0'}`,
-          icon: TrendingUp,
+          title: 'Revenue',
+          value: `₹${dashboardData.overview.totalRevenue?.toLocaleString() || '0'}`,
+          icon: DollarSign,
           color: 'bg-yellow-500',
           link: '/analytics'
         }
@@ -222,20 +95,10 @@ const Dashboard = () => {
     if (user?.role === 'AD_MANAGER' || user?.role === 'ADMIN') {
       baseCards.push({
         title: 'Active Ads',
-        value: dashboardData.ads?.active || 0,
+        value: dashboardData.ads?.active?.toLocaleString() || '0',
         icon: Target,
         color: 'bg-red-500',
         link: '/advertisements'
-      });
-    }
-
-    if (user?.role === 'AD_MANAGER' || user?.role === 'ADMIN') {
-      baseCards.push({
-        title: 'Pending Approvals',
-        value: realArticleStats?.pending || 0, // Use real data here
-        icon: Clock,
-        color: 'bg-orange-500',
-        link: '/articles/pending'
       });
     }
 
@@ -259,7 +122,7 @@ const Dashboard = () => {
         link: '/articles/pending',
         color: 'bg-green-500',
         roles: ['AD_MANAGER', 'ADMIN'],
-        badge: realArticleStats?.pending > 0 ? realArticleStats.pending : null
+        badge: dashboardData?.articles?.pending || null
       },
       {
         title: 'Create Advertisement',
@@ -300,6 +163,20 @@ const Dashboard = () => {
     );
   }
 
+  if (error || !dashboardData) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96">
+        <XCircle className="w-16 h-16 text-red-500 mb-4" />
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Failed to Load Dashboard</h2>
+        <p className="text-gray-600 mb-4">{error || 'No data available'}</p>
+        <button onClick={fetchDashboardData} className="btn-primary">
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
   const statsCards = getStatsCards();
   const quickActions = getQuickActions();
 
@@ -314,12 +191,6 @@ const Dashboard = () => {
           <p className="text-gray-600">
             Here's what's happening with your news platform today.
           </p>
-          {error && (
-            <div className="mt-2 text-sm text-amber-600 bg-amber-50 px-3 py-2 rounded-md border border-amber-200">
-              {error}
-            </div>
-          )}
-      
         </div>
         
         <button
@@ -383,72 +254,74 @@ const Dashboard = () => {
       </div>
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Views Chart */}
-        {dashboardData?.chartData?.dailyViews && (
-          <div className="card">
-            <div className="card-header">
-              <h3 className="text-lg font-semibold text-gray-900">Daily Views</h3>
+      {dashboardData.chartData && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Views Chart */}
+          {dashboardData.chartData.dailyViews && (
+            <div className="card">
+              <div className="card-header">
+                <h3 className="text-lg font-semibold text-gray-900">Daily Views (Last 7 Days)</h3>
+              </div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={dashboardData.chartData.dailyViews.map((views, index) => ({
+                    day: `Day ${index + 1}`,
+                    views
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="day" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="views" stroke="#3B82F6" strokeWidth={2} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dashboardData.chartData.dailyViews.map((views, index) => ({
-                  day: `Day ${index + 1}`,
-                  views
-                }))}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="day" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line type="monotone" dataKey="views" stroke="#3B82F6" strokeWidth={2} />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
+          )}
 
-        {/* Categories Chart */}
-        {dashboardData?.chartData?.categories && (
-          <div className="card">
-            <div className="card-header">
-              <h3 className="text-lg font-semibold text-gray-900">Articles by Category</h3>
+          {/* Categories Chart */}
+          {dashboardData.chartData.categories && Object.keys(dashboardData.chartData.categories).length > 0 && (
+            <div className="card">
+              <div className="card-header">
+                <h3 className="text-lg font-semibold text-gray-900">Articles by Category</h3>
+              </div>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={Object.entries(dashboardData.chartData.categories).map(([name, value]) => ({
+                        name,
+                        value
+                      }))}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, value }) => `${name}: ${value}`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {Object.entries(dashboardData.chartData.categories).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
             </div>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={Object.entries(dashboardData.chartData.categories).map(([name, value]) => ({
-                      name,
-                      value
-                    }))}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {Object.entries(dashboardData.chartData.categories).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
-      {/* Recent Activity */}
-      {dashboardData?.topArticles && (
+      {/* Top Articles */}
+      {dashboardData.topArticles && dashboardData.topArticles.length > 0 && (
         <div className="card">
           <div className="card-header">
             <h3 className="text-lg font-semibold text-gray-900">Top Performing Articles</h3>
           </div>
           <div className="space-y-4">
-            {dashboardData.topArticles.slice(0, 5).map((article, index) => (
+            {dashboardData.topArticles.map((article, index) => (
               <div key={article.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                 <div className="flex-1">
                   <Link
@@ -461,7 +334,7 @@ const Dashboard = () => {
                 </div>
                 <div className="flex items-center space-x-4">
                   <div className="text-right">
-                    <p className="font-medium text-gray-900">{article.views.toLocaleString()}</p>
+                    <p className="font-medium text-gray-900">{article.views?.toLocaleString()}</p>
                     <p className="text-sm text-gray-600">views</p>
                   </div>
                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -474,15 +347,15 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Article Status Summary - Now with REAL data */}
-      {(user?.role === 'AD_MANAGER' || user?.role === 'ADMIN') && realArticleStats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Article Status Summary */}
+      {(user?.role === 'AD_MANAGER' || user?.role === 'ADMIN') && dashboardData.articles && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="card">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Published</p>
                 <p className="text-3xl font-bold text-green-600">
-                  {realArticleStats.published || 0}
+                  {dashboardData.articles.published?.toLocaleString() || '0'}
                 </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-500" />
@@ -494,7 +367,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Pending</p>
                 <p className="text-3xl font-bold text-yellow-600">
-                  {realArticleStats.pending || 0}
+                  {dashboardData.articles.pending?.toLocaleString() || '0'}
                 </p>
               </div>
               <Clock className="w-8 h-8 text-yellow-500" />
@@ -506,10 +379,22 @@ const Dashboard = () => {
               <div>
                 <p className="text-sm font-medium text-gray-600">Rejected</p>
                 <p className="text-3xl font-bold text-red-600">
-                  {realArticleStats.rejected || 0}
+                  {dashboardData.articles.rejected?.toLocaleString() || '0'}
                 </p>
               </div>
               <XCircle className="w-8 h-8 text-red-500" />
+            </div>
+          </div>
+          
+          <div className="card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Draft</p>
+                <p className="text-3xl font-bold text-gray-600">
+                  {dashboardData.articles.draft?.toLocaleString() || '0'}
+                </p>
+              </div>
+              <FileText className="w-8 h-8 text-gray-500" />
             </div>
           </div>
         </div>

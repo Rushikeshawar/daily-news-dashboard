@@ -1,134 +1,98 @@
-// src/services/analyticsService.js
+// src/services/analyticsService.js - REAL DATA ONLY
 import api from './api';
 
-const mockDashboardData = {
-  overview: {
-    totalArticles: 245,
-    totalUsers: 1200,
-    totalViews: 125000,
-    totalRevenue: 15750
-  },
-  ads: {
-    active: 12
-  },
-  articles: {
-    pending: 8,
-    published: 187,
-    rejected: 5
-  },
-  chartData: {
-    dailyViews: [1200, 1400, 1100, 1600, 1800, 2000, 1750],
-    categories: {
-      'Technology': 85,
-      'Business': 60,
-      'Sports': 50,
-      'Politics': 35,
-      'Entertainment': 15
-    }
-  },
-  topArticles: [
-    {
-      id: '1',
-      headline: 'Breaking: New Technology Breakthrough',
-      author: 'John Smith',
-      views: 15420
-    },
-    {
-      id: '2',
-      headline: 'Market Analysis: Q3 Results',
-      author: 'Jane Doe',
-      views: 12350
-    },
-    {
-      id: '3',
-      headline: 'Sports Update: Championship Finals',
-      author: 'Mike Johnson',
-      views: 10890
-    },
-    {
-      id: '4',
-      headline: 'Political News: Latest Updates',
-      author: 'Sarah Wilson',
-      views: 9876
-    },
-    {
-      id: '5',
-      headline: 'Entertainment: Movie Reviews',
-      author: 'Tom Brown',
-      views: 8765
-    }
-  ]
-};
-
 export const analyticsService = {
+  // Get dashboard analytics
   getDashboard: async (params) => {
     try {
-      return await api.get('/analytics/dashboard', { params });
+      console.log('📊 Fetching dashboard analytics with params:', params);
+      const response = await api.get('/analytics/dashboard', { params });
+      console.log('✅ Dashboard analytics response:', response.data);
+      return response;
     } catch (error) {
-      console.warn('Analytics service unavailable, using mock data:', error.message);
-      // Return mock data when API fails
-      return {
-        data: mockDashboardData
-      };
+      console.error('❌ Dashboard analytics error:', error);
+      throw error;
     }
   },
   
-  getArticleAnalytics: async (params) => {
+  // Get overview analytics
+  getOverview: async (params) => {
     try {
-      return await api.get('/analytics/articles', { params });
+      console.log('📊 Fetching overview analytics with params:', params);
+      const response = await api.get('/analytics/overview', { params });
+      console.log('✅ Overview analytics response:', response.data);
+      return response;
     } catch (error) {
-      console.warn('Article analytics unavailable, using mock data');
-      return {
-        data: {
-          overview: {
-            totalArticles: 245,
-            totalViews: 125000,
-            avgViewsPerArticle: 510
-          },
-          chartData: {
-            viewsOverTime: mockDashboardData.chartData.dailyViews.map((views, index) => ({
-              date: `2025-01-${String(index + 7).padStart(2, '0')}`,
-              views
-            })),
-            categoryPerformance: Object.entries(mockDashboardData.chartData.categories).map(([name, articles]) => ({
-              category: name,
-              articles,
-              avgViews: Math.floor(Math.random() * 1000) + 500
-            }))
-          }
-        }
-      };
+      console.error('❌ Overview analytics error:', error);
+      throw error;
     }
   },
   
+  // Get content analytics
+  getContentAnalytics: async (params) => {
+    try {
+      console.log('📊 Fetching content analytics with params:', params);
+      const response = await api.get('/analytics/content', { params });
+      console.log('✅ Content analytics response:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ Content analytics error:', error);
+      throw error;
+    }
+  },
+  
+  // Get user analytics
   getUserAnalytics: async (params) => {
     try {
-      return await api.get('/analytics/users', { params });
+      console.log('📊 Fetching user analytics with params:', params);
+      const response = await api.get('/analytics/users', { params });
+      console.log('✅ User analytics response:', response.data);
+      return response;
     } catch (error) {
-      console.warn('User analytics unavailable, using mock data');
-      return {
-        data: {
-          overview: {
-            totalUsers: 1200,
-            activeUsers: 850,
-            newUsers: 45
-          },
-          chartData: {
-            userGrowth: [
-              { month: 'Jan', users: 800 },
-              { month: 'Feb', users: 950 },
-              { month: 'Mar', users: 1100 },
-              { month: 'Apr', users: 1200 }
-            ],
-            usersByRole: {
-              'ADMIN': 5,
-              'AD_MANAGER': 15,
-              'EDITOR': 180,
-              'USER': 1000
-            }
-          }
-        }
-      };
+      console.error('❌ User analytics error:', error);
+      throw error;
+    }
+  },
+  
+  // Get engagement analytics
+  getEngagementAnalytics: async (params) => {
+    try {
+      console.log('📊 Fetching engagement analytics with params:', params);
+      const response = await api.get('/analytics/engagement', { params });
+      console.log('✅ Engagement analytics response:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ Engagement analytics error:', error);
+      throw error;
+    }
+  },
+  
+  // Get realtime analytics
+  getRealtimeAnalytics: async (params) => {
+    try {
+      console.log('📊 Fetching realtime analytics with params:', params);
+      const response = await api.get('/analytics/realtime', { params });
+      console.log('✅ Realtime analytics response:', response.data);
+      return response;
+    } catch (error) {
+      console.error('❌ Realtime analytics error:', error);
+      throw error;
+    }
+  },
+  
+  // Export analytics
+  exportAnalytics: async (params) => {
+    try {
+      console.log('📊 Exporting analytics with params:', params);
+      const response = await api.get('/analytics/export', { 
+        params,
+        responseType: 'blob'
+      });
+      console.log('✅ Export analytics response received');
+      return response;
+    } catch (error) {
+      console.error('❌ Export analytics error:', error);
+      throw error;
     }
   }
 };
