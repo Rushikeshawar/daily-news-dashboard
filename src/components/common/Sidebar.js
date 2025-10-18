@@ -41,7 +41,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     { name: 'Users', href: '/users', icon: Users, roles: ['ADMIN'] },
     { name: 'Advertisements', href: '/advertisements', icon: Target, roles: ['ADMIN', 'AD_MANAGER'] },
     { name: 'Analytics', href: '/analytics', icon: BarChart3, roles: ['ADMIN', 'AD_MANAGER'] },
-    // { name: 'Categories', href: '/categories', icon: FolderOpen, roles: ['ADMIN'] },
+    { name: 'Categories', href: '/categories', icon: FolderOpen, roles: ['ADMIN'] },
   ];
 
   // AI/ML Sub-navigation with updated permissions
