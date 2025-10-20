@@ -1,178 +1,174 @@
-// src/services/categoryService.js - COMPLETE AND FIXED
+// src/services/categoryService.js - UPDATED FOR NEW BACKEND
 import api from './api';
 
-const mockCategories = [
-  { 
-    id: '1', 
-    name: 'Technology', 
-    description: 'Latest tech news and innovations', 
-    isActive: true,
-    articleCount: 85,
-    createdAt: new Date().toISOString()
-  },
-  { 
-    id: '2', 
-    name: 'Business', 
-    description: 'Business and finance updates', 
-    isActive: true,
-    articleCount: 60,
-    createdAt: new Date().toISOString()
-  },
-  { 
-    id: '3', 
-    name: 'Sports', 
-    description: 'Sports news and updates', 
-    isActive: true,
-    articleCount: 50,
-    createdAt: new Date().toISOString()
-  },
-  { 
-    id: '4', 
-    name: 'Politics', 
-    description: 'Political news and analysis', 
-    isActive: true,
-    articleCount: 35,
-    createdAt: new Date().toISOString()
-  },
-  { 
-    id: '5', 
-    name: 'Entertainment', 
-    description: 'Entertainment and celebrity news', 
-    isActive: true,
-    articleCount: 15,
-    createdAt: new Date().toISOString()
-  },
-  { 
-    id: '6', 
-    name: 'Science', 
-    description: 'Scientific discoveries and research', 
-    isActive: true,
-    articleCount: 25,
-    createdAt: new Date().toISOString()
-  },
-  { 
-    id: '7', 
-    name: 'Health', 
-    description: 'Health and wellness news', 
-    isActive: true,
-    articleCount: 30,
-    createdAt: new Date().toISOString()
-  },
-  { 
-    id: '8', 
-    name: 'Travel', 
-    description: 'Travel guides and destination news', 
-    isActive: true,
-    articleCount: 20,
-    createdAt: new Date().toISOString()
-  },
-  { 
-    id: '9', 
-    name: 'Education', 
-    description: 'Education news and updates', 
-    isActive: true,
-    articleCount: 18,
-    createdAt: new Date().toISOString()
-  }
-];
-
 export const categoryService = {
-  getCategories: async () => {
+  // Get all categories
+  getCategories: async (includeInactive = false) => {
     try {
-      const response = await api.get('/categories');
+      const response = await api.get('/categories', {
+        params: { includeInactive: includeInactive ? 'true' : 'false' }
+      });
       console.log('Categories API response:', response.data);
       
-      // Parse the nested data structure from backend
-      const actualData = response.data?.data || response.data;
+      // Backend returns: { success: true, data: { categories: [...] } }
+      const categories = response.data?.data?.categories || [];
       
-      // If API returns valid data, use it; otherwise fall back to mock
-      if (Array.isArray(actualData) && actualData.length > 0) {
-        console.log('Categories: Using API data');
-        return {
-          data: actualData.filter(cat => cat.isActive !== false)
-        };
-      } else {
-        console.log('Categories: API returned empty/invalid data, using mock categories');
-        return {
-          data: mockCategories
-        };
-      }
-    } catch (error) {
-      console.warn('Categories API unavailable, using mock data:', error.message);
       return {
-        data: mockCategories
+        success: true,
+        data: categories
       };
+    } catch (error) {
+      console.error('Get categories error:', error);
+      throw error;
     }
   },
   
+  // Get single category by ID
   getCategory: async (id) => {
     try {
       const response = await api.get(`/categories/${id}`);
-      const actualData = response.data?.data || response.data;
+      console.log('Category API response:', response.data);
+      
+      // Backend returns: { success: true, data: { category: {...} } }
+      const category = response.data?.data?.category || null;
+      
       return {
-        data: actualData
+        success: true,
+        data: category
       };
     } catch (error) {
-      console.warn('Category API unavailable, using mock data');
-      const mockCategory = mockCategories.find(cat => cat.id === id) || mockCategories[0];
-      return {
-        data: mockCategory
-      };
+      console.error('Get category error:', error);
+      throw error;
     }
   },
   
+  // Create new category
   createCategory: async (data) => {
     try {
-      const response = await api.post('/categories', data);
-      const actualData = response.data?.data || response.data;
+      const payload = {
+        name: data.name,
+        displayName: data.displayName || data.name,
+        description: data.description || '',
+        color: data.color || '#3B82F6',
+        iconUrl: data.iconUrl || '',
+        sortOrder: data.sortOrder || 0
+      };
+      
+      const response = await api.post('/categories', payload);
+      console.log('Create category response:', response.data);
+      
+      // Backend returns: { success: true, message: '...', data: { category: {...} } }
       return {
-        data: actualData
+        success: true,
+        data: response.data?.data?.category || response.data
       };
     } catch (error) {
-      console.warn('Create category API unavailable');
-      return {
-        data: {
-          id: Date.now().toString(),
-          ...data,
-          isActive: true,
-          articleCount: 0,
-          createdAt: new Date().toISOString()
-        }
-      };
+      console.error('Create category error:', error);
+      throw error;
     }
   },
   
+  // Update category
   updateCategory: async (id, data) => {
     try {
-      const response = await api.put(`/categories/${id}`, data);
-      const actualData = response.data?.data || response.data;
+      const payload = {
+        displayName: data.displayName || data.name,
+        description: data.description,
+        color: data.color,
+        iconUrl: data.iconUrl,
+        sortOrder: data.sortOrder,
+        isActive: data.isActive
+      };
+      
+      // Remove undefined values
+      Object.keys(payload).forEach(key => {
+        if (payload[key] === undefined) {
+          delete payload[key];
+        }
+      });
+      
+      const response = await api.put(`/categories/${id}`, payload);
+      console.log('Update category response:', response.data);
+      
       return {
-        data: actualData
+        success: true,
+        data: response.data?.data?.category || response.data
       };
     } catch (error) {
-      console.warn('Update category API unavailable');
-      return {
-        data: {
-          id,
-          ...data,
-          updatedAt: new Date().toISOString()
-        }
-      };
+      console.error('Update category error:', error);
+      throw error;
     }
   },
   
+  // Delete category
   deleteCategory: async (id) => {
     try {
       const response = await api.delete(`/categories/${id}`);
-      const actualData = response.data?.data || response.data;
+      console.log('Delete category response:', response.data);
+      
       return {
-        data: actualData
+        success: true,
+        message: response.data?.message || 'Category deleted successfully'
       };
     } catch (error) {
-      console.warn('Delete category API unavailable');
+      console.error('Delete category error:', error);
+      // If error has response with message, throw that
+      if (error.response?.data?.message) {
+        throw new Error(error.response.data.message);
+      }
+      throw error;
+    }
+  },
+  
+  // Toggle category status
+  toggleCategoryStatus: async (id) => {
+    try {
+      const response = await api.patch(`/categories/${id}/toggle-status`);
+      console.log('Toggle category status response:', response.data);
+      
       return {
-        data: { success: true, message: 'Category deleted successfully' }
+        success: true,
+        data: response.data?.data?.category || response.data
       };
+    } catch (error) {
+      console.error('Toggle category status error:', error);
+      throw error;
+    }
+  },
+  
+  // Get articles by category
+  getArticlesByCategory: async (id, page = 1, limit = 10) => {
+    try {
+      const response = await api.get(`/categories/${id}/articles`, {
+        params: { page, limit }
+      });
+      console.log('Articles by category response:', response.data);
+      
+      return {
+        success: true,
+        data: response.data?.data || response.data
+      };
+    } catch (error) {
+      console.error('Get articles by category error:', error);
+      throw error;
+    }
+  },
+  
+  // Get category stats
+  getCategoryStats: async (id, timeframe = '30d') => {
+    try {
+      const response = await api.get(`/categories/${id}/stats`, {
+        params: { timeframe }
+      });
+      console.log('Category stats response:', response.data);
+      
+      return {
+        success: true,
+        data: response.data?.data?.stats || response.data
+      };
+    } catch (error) {
+      console.error('Get category stats error:', error);
+      throw error;
     }
   }
 };

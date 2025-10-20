@@ -48,9 +48,9 @@ const Login = () => {
   };
 
   const defaultCredentials = [
-    { role: 'Admin', email: 'admin@dailynews.com', password: 'admin123!' },
-    { role: 'AD Manager', email: 'admanager@dailynews.com', password: 'manager123!' },
-    { role: 'Editor', email: 'editor@dailynews.com', password: 'editor123!' }
+    { role: 'Admin', email: 'admin@newsplatform.com', password: 'password123' },
+    { role: 'AD Manager', email: 'admanager@newsplatform.com', password: 'password123' },
+    { role: 'Editor', email: 'editor1@newsplatform.com', password: 'password123' }
   ];
 
   const fillCredentials = (email, password) => {

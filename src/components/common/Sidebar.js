@@ -66,7 +66,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const adminNavigation = [
     { name: 'System Settings', href: '/admin/settings', icon: Settings },
     { name: 'System Health', href: '/admin/health', icon: Shield },
-    { name: 'System Logs', href: '/admin/logs', icon: Activity },
+    // { name: 'System Logs', href: '/admin/logs', icon: Activity },
   ];
 
   const isActive = (href) => location.pathname === href || location.pathname.startsWith(href + '/');
