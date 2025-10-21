@@ -1,5 +1,5 @@
-// src/pages/ai-ml/AiMlNews.js - COMPLETE CORRECTED VERSION
-import React, { useState, useEffect } from 'react';
+// src/pages/ai-ml/AiMlNews.js - UPDATED WITH DISPLAYNAME SUPPORT AND CATEGORY MAP
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Brain, TrendingUp } from 'lucide-react';
 import { aiMlService } from '../../services/aiMlService';
@@ -31,6 +31,18 @@ const AiMlNews = () => {
   const [categories, setCategories] = useState([]);
 
   const canCreateArticle = ['EDITOR', 'AD_MANAGER'].includes(user?.role);
+
+  // Category display name map for better UX
+  const categoryMap = useMemo(() => {
+    const map = new Map();
+    categories.forEach((cat) => {
+      map.set(
+        cat.name,
+        cat.displayName || cat.name.replace(/_/g, ' ')
+      );
+    });
+    return map;
+  }, [categories]);
 
   useEffect(() => {
     fetchArticles();
@@ -154,8 +166,8 @@ const AiMlNews = () => {
             >
               <option value="">All Categories</option>
               {categories.map((category) => (
-                <option key={category.name} value={category.name}>
-                  {category.name.replace(/_/g, ' ')} ({category.articleCount})
+                <option key={category.id || category.name} value={category.name}>
+                  {category.displayName || category.name.replace(/_/g, ' ')} ({category.articleCount})
                 </option>
               ))}
             </select>
@@ -218,7 +230,7 @@ const AiMlNews = () => {
                 {/* Header with badges */}
                 <div className="flex items-start justify-between mb-3">
                   <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                    {article.category?.replace(/_/g, ' ') || 'AI/ML'}
+                    {categoryMap.get(article.category) || article.category?.replace(/_/g, ' ') || 'AI/ML'}
                   </span>
                   {article.isTrending && (
                     <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium flex items-center">

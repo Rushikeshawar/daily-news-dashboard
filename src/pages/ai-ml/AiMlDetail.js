@@ -1,4 +1,4 @@
-// src/pages/ai-ml/AiMlDetail.js
+// src/pages/ai-ml/AiMlDetail.js - FIXED CATEGORY DISPLAY (GLOBAL REPLACE)
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Brain, Calendar, Eye, Share2, Bookmark, TrendingUp, ExternalLink, Plus, Clock } from 'lucide-react';
@@ -162,7 +162,7 @@ const AiMlDetail = () => {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-2">
             <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-              {article.category?.replace('_', ' ') || 'AI/ML'}
+              {article.category?.replace(/_/g, ' ') || 'AI/ML'}
             </span>
             {article.isTrending && (
               <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium flex items-center">
@@ -358,7 +358,7 @@ const AiMlDetail = () => {
                     <p className="text-gray-700 text-sm mb-3">{timeSaver.summary}</p>
                     <div className="flex items-center space-x-4 text-xs text-gray-600">
                       <span className="px-2 py-1 bg-purple-200 text-purple-800 rounded">
-                        {timeSaver.contentType?.replace('_', ' ')}
+                        {timeSaver.contentType?.replace(/_/g, ' ')}
                       </span>
                       {timeSaver.readTimeSeconds && (
                         <span className="flex items-center">

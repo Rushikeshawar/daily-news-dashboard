@@ -1,4 +1,4 @@
-// src/pages/ai-ml/AiMlTrending.js - Fixed version
+// src/pages/ai-ml/AiMlTrending.js - FIXED CATEGORY DISPLAY (GLOBAL REPLACE)
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, TrendingUp, Brain, Flame, Clock } from 'lucide-react';
@@ -119,7 +119,7 @@ const AiMlTrending = () => {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center space-x-2 mb-2">
                     <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-                      {article.category?.replace('_', ' ') || 'AI/ML'}
+                      {article.category?.replace(/_/g, ' ') || 'AI/ML'}
                     </span>
                     <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium flex items-center">
                       <TrendingUp className="w-3 h-3 mr-1" />

@@ -1,7 +1,7 @@
-// src/services/aiMlService.js - COMPLETE CORRECTED VERSION
+// src/services/aiMlService.js - COMPLETE CORRECTED VERSION WITH CATEGORY MANAGEMENT
 import api from './api';
 
-const mockAiMlNews = [
+let mockAiMlNews = [
   {
     id: '1',
     headline: 'OpenAI Releases GPT-5 with Revolutionary Capabilities',
@@ -61,13 +61,55 @@ const mockAiMlNews = [
   }
 ];
 
-const mockCategories = [
-  { name: 'LANGUAGE_MODELS', articleCount: 45, isHot: true, description: 'Large Language Models and NLP' },
-  { name: 'COMPUTER_VISION', articleCount: 32, isHot: true, description: 'Image recognition and visual AI' },
-  { name: 'AUTOMATION', articleCount: 28, isHot: false, description: 'AI-powered automation tools' },
-  { name: 'ROBOTICS', articleCount: 23, isHot: false, description: 'AI in robotics and hardware' },
-  { name: 'HEALTHCARE', articleCount: 19, isHot: true, description: 'AI applications in healthcare' },
-  { name: 'RESEARCH', articleCount: 15, isHot: false, description: 'Academic AI research' }
+let mockCategoriesData = [
+  {
+    id: '1',
+    name: 'LANGUAGE_MODELS',
+    displayName: 'Language Models',
+    articleCount: 45,
+    isHot: true,
+    description: 'Large Language Models and NLP'
+  },
+  {
+    id: '2',
+    name: 'COMPUTER_VISION',
+    displayName: 'Computer Vision',
+    articleCount: 32,
+    isHot: true,
+    description: 'Image recognition and visual AI'
+  },
+  {
+    id: '3',
+    name: 'AUTOMATION',
+    displayName: 'Automation',
+    articleCount: 28,
+    isHot: false,
+    description: 'AI-powered automation tools'
+  },
+  {
+    id: '4',
+    name: 'ROBOTICS',
+    displayName: 'Robotics',
+    articleCount: 23,
+    isHot: false,
+    description: 'AI in robotics and hardware'
+  },
+  {
+    id: '5',
+    name: 'HEALTHCARE',
+    displayName: 'Healthcare',
+    articleCount: 19,
+    isHot: true,
+    description: 'AI applications in healthcare'
+  },
+  {
+    id: '6',
+    name: 'RESEARCH',
+    displayName: 'Research',
+    articleCount: 15,
+    isHot: false,
+    description: 'Academic AI research'
+  }
 ];
 
 export const aiMlService = {
@@ -125,7 +167,7 @@ export const aiMlService = {
     }
   },
 
-  // Get single AI/ML article - CORRECTED
+  // Get single AI/ML article
   getArticle: async (id) => {
     try {
       if (!id) {
@@ -224,7 +266,7 @@ export const aiMlService = {
     }
   },
 
-  // Get AI/ML categories
+  // Get AI/ML categories - UPDATED FOR MOCK WITH ID AND DISPLAYNAME
   getCategories: async () => {
     try {
       const response = await api.get('/ai-ml/categories');
@@ -238,8 +280,105 @@ export const aiMlService = {
       console.warn('AI/ML categories API unavailable, using mock data');
       return {
         data: {
-          categories: mockCategories
+          categories: mockCategoriesData
         }
+      };
+    }
+  },
+
+  // NEW: Create AI/ML category (EDITOR and AD_MANAGER only)
+  createCategory: async (data) => {
+    try {
+      console.log('AI/ML Service: Creating category with data:', data);
+      
+      const response = await api.post('/ai-ml/categories', data);
+      console.log('AI/ML Service: Create category response:', response.data);
+      
+      const actualData = response.data?.data || response.data;
+      return {
+        data: actualData?.category || actualData
+      };
+    } catch (error) {
+      console.warn('Categories create API unavailable, simulating with mock data:', error.message);
+      
+      const newCategory = {
+        id: `mock_cat_${Date.now()}`,
+        name: data.name,
+        displayName: data.displayName || data.name.replace(/_/g, ' ').trim(),
+        description: data.description || '',
+        isHot: !!data.isHot,
+        articleCount: 0
+      };
+      
+      mockCategoriesData.push(newCategory);
+      
+      return {
+        data: newCategory
+      };
+    }
+  },
+
+  // NEW: Update AI/ML category (EDITOR and AD_MANAGER only)
+  updateCategory: async (id, data) => {
+    try {
+      console.log('AI/ML Service: Updating category ID:', id, 'with data:', data);
+      
+      const response = await api.put(`/ai-ml/categories/${id}`, data);
+      console.log('AI/ML Service: Update category response:', response.data);
+      
+      const actualData = response.data?.data || response.data;
+      return {
+        data: actualData?.category || actualData
+      };
+    } catch (error) {
+      console.warn('Categories update API unavailable, simulating with mock data:', error.message);
+      
+      const index = mockCategoriesData.findIndex(c => c.id === id);
+      if (index === -1) {
+        throw new Error('Category not found');
+      }
+      
+      const updatedCategory = {
+        ...mockCategoriesData[index],
+        name: data.name || mockCategoriesData[index].name,
+        displayName: data.displayName !== undefined ? data.displayName : mockCategoriesData[index].displayName,
+        description: data.description !== undefined ? data.description : mockCategoriesData[index].description,
+        isHot: data.isHot !== undefined ? !!data.isHot : mockCategoriesData[index].isHot,
+        articleCount: mockCategoriesData[index].articleCount
+      };
+      
+      mockCategoriesData[index] = updatedCategory;
+      
+      return {
+        data: updatedCategory
+      };
+    }
+  },
+
+  // NEW: Delete AI/ML category (EDITOR and AD_MANAGER only)
+  deleteCategory: async (id) => {
+    try {
+      console.log('AI/ML Service: Deleting category ID:', id);
+      
+      const response = await api.delete(`/ai-ml/categories/${id}`);
+      console.log('AI/ML Service: Delete category response:', response.data);
+      
+      return { 
+        success: true, 
+        data: response.data 
+      };
+    } catch (error) {
+      console.warn('Categories delete API unavailable, simulating with mock data:', error.message);
+      
+      const index = mockCategoriesData.findIndex(c => c.id === id);
+      if (index === -1) {
+        throw new Error('Category not found');
+      }
+      
+      mockCategoriesData.splice(index, 1);
+      
+      return { 
+        success: true 
       };
     }
   },
@@ -283,7 +422,7 @@ export const aiMlService = {
     }
   },
 
-  // Track article view - CORRECTED
+  // Track article view
   trackView: async (id) => {
     try {
       console.log('AI/ML Service: Tracking view for article ID:', id);
@@ -306,7 +445,7 @@ export const aiMlService = {
     }
   },
 
-  // Track article interaction - CORRECTED
+  // Track article interaction
   trackInteraction: async (id, interactionType) => {
     try {
       console.log('AI/ML Service: Tracking interaction for ID:', id, 'Type:', interactionType);

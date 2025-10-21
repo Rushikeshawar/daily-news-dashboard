@@ -1,5 +1,5 @@
-// src/pages/ai-ml/CreateAiMlArticle.js
-import React, { useState } from 'react';
+// src/pages/ai-ml/CreateAiMlArticle.js - UPDATED WITH DYNAMIC CATEGORIES
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Brain } from 'lucide-react';
 import { aiMlService } from '../../services/aiMlService';
@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 const CreateAiMlArticle = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     headline: '',
     briefContent: '',
@@ -22,18 +24,20 @@ const CreateAiMlArticle = () => {
     relevanceScore: ''
   });
 
-  const categories = [
-    'LANGUAGE_MODELS',
-    'COMPUTER_VISION',
-    'AUTOMATION',
-    'ROBOTICS',
-    'HEALTHCARE',
-    'RESEARCH',
-    'NATURAL_LANGUAGE_PROCESSING',
-    'MACHINE_LEARNING',
-    'DEEP_LEARNING',
-    'NEURAL_NETWORKS'
-  ];
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await aiMlService.getCategories();
+        setCategories(response.data.categories || []);
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+        toast.error('Failed to load categories');
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -170,14 +174,21 @@ const CreateAiMlArticle = () => {
                 onChange={handleChange}
                 className="form-select"
                 required
+                disabled={loadingCategories}
               >
                 <option value="">Select category</option>
                 {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category.replace(/_/g, ' ')}
+                  <option key={category.id || category.name} value={category.name}>
+                    {category.displayName || category.name.replace(/_/g, ' ')} ({category.articleCount || 0} articles)
                   </option>
                 ))}
               </select>
+              {loadingCategories && (
+                <p className="text-sm text-gray-500 mt-2 flex items-center">
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mr-2" />
+                  Loading categories...
+                </p>
+              )}
             </div>
 
             <div>
@@ -217,7 +228,7 @@ const CreateAiMlArticle = () => {
                 <img
                   src={formData.featuredImage}
                   alt="Preview"
-                  className="w-32 h-32 object-cover rounded-md"
+                  className="w-32 h-32 object-cover rounded-md border"
                   onError={(e) => {
                     e.target.style.display = 'none';
                   }}
@@ -238,7 +249,7 @@ const CreateAiMlArticle = () => {
                 value={formData.aiModel}
                 onChange={handleChange}
                 className="form-input"
-                placeholder="GPT-4, BERT, AlphaFold, etc."
+                placeholder="GPT-5, AlphaFold 3, etc."
               />
             </div>
 
@@ -253,7 +264,7 @@ const CreateAiMlArticle = () => {
                 value={formData.aiApplication}
                 onChange={handleChange}
                 className="form-input"
-                placeholder="Natural Language Processing, Computer Vision, etc."
+                placeholder="Natural Language Processing, etc."
               />
             </div>
           </div>
@@ -270,7 +281,7 @@ const CreateAiMlArticle = () => {
                 value={formData.companyMentioned}
                 onChange={handleChange}
                 className="form-input"
-                placeholder="OpenAI, Google, Microsoft, etc."
+                placeholder="OpenAI, Google DeepMind, Microsoft, etc."
               />
             </div>
 
@@ -285,14 +296,14 @@ const CreateAiMlArticle = () => {
                 value={formData.technologyType}
                 onChange={handleChange}
                 className="form-input"
-                placeholder="Deep Learning, Machine Learning, etc."
+                placeholder="Large Language Model, Deep Learning, etc."
               />
             </div>
           </div>
 
           <div>
             <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
-              Tags
+              Tags (comma-separated)
             </label>
             <input
               type="text"
@@ -301,12 +312,12 @@ const CreateAiMlArticle = () => {
               value={formData.tags}
               onChange={handleChange}
               className="form-input"
-              placeholder="ai, machine-learning, gpt, transformer"
+              placeholder="ai, gpt, machine-learning, openai"
             />
-            <p className="text-sm text-gray-500 mt-1">Comma-separated tags (e.g., ai, ml, nlp)</p>
+            <p className="text-sm text-gray-500 mt-1">e.g., ai, ml, nlp, transformer</p>
           </div>
 
-          <div className="flex justify-end space-x-3">
+          <div className="flex justify-end space-x-3 pt-6 border-t">
             <button
               type="button"
               onClick={() => navigate('/ai-ml')}
@@ -319,7 +330,14 @@ const CreateAiMlArticle = () => {
               disabled={loading}
               className="btn-primary"
             >
-              {loading ? 'Creating...' : 'Create Article'}
+              {loading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2 inline-block" />
+                  Creating...
+                </>
+              ) : (
+                'Create Article'
+              )}
             </button>
           </div>
         </form>
