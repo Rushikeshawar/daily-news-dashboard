@@ -1,7 +1,7 @@
 // src/pages/time-saver/TimeSaverCategory.js
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock } from 'lucide-react';
+import { ArrowLeft, Clock, ExternalLink } from 'lucide-react';
 import { timeSaverService } from '../../services/timeSaverService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -36,8 +36,35 @@ const TimeSaverCategory = () => {
     }
   };
 
-  const handleContentClick = (contentId) => {
-    timeSaverService.trackView(contentId);
+  const handleContentClick = async (item) => {
+    try {
+      // Track the view
+      await timeSaverService.trackView(item.id);
+      
+      // Get the article link information
+      const linkInfo = timeSaverService.getArticleLink(item);
+      
+      if (linkInfo.url) {
+        if (linkInfo.isExternal) {
+          // Open external URL in new tab
+          window.open(linkInfo.url, '_blank', 'noopener,noreferrer');
+        } else if (linkInfo.requiresAuth && linkInfo.needsLogin) {
+          // Navigate to login with redirect
+          navigate(linkInfo.url);
+          toast.info('Please log in to view this AI-generated article');
+        } else {
+          // Navigate to internal article
+          navigate(linkInfo.url);
+        }
+      } else {
+        // No linked article - show a message
+        toast.info('No full article available for this content');
+        console.log('Content details:', item);
+      }
+    } catch (error) {
+      console.error('Handle content click error:', error);
+      toast.error('Failed to open article');
+    }
   };
 
   return (
@@ -46,7 +73,7 @@ const TimeSaverCategory = () => {
       <div className="flex items-center space-x-4">
         <button
           onClick={() => navigate('/time-saver')}
-          className="p-2 hover:bg-gray-100 rounded-md"
+          className="p-2 hover:bg-gray-100 rounded-md transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -76,7 +103,7 @@ const TimeSaverCategory = () => {
           {content.map((item, index) => (
             <div
               key={item.id}
-              onClick={() => handleContentClick(item.id)}
+              onClick={() => handleContentClick(item)}
               className="card hover:shadow-lg transition-shadow duration-200 cursor-pointer"
             >
               <div className="flex items-start space-x-4">
@@ -112,9 +139,13 @@ const TimeSaverCategory = () => {
                         Priority
                       </span>
                     )}
+                    {/* Show external link icon if it's an external source */}
+                    {item.sourceUrl && !item.linkedArticle && !item.linkedAiArticle && (
+                      <ExternalLink className="w-4 h-4 text-gray-500" />
+                    )}
                   </div>
 
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2 hover:text-blue-600 transition-colors">
                     {item.title}
                   </h3>
 
@@ -122,12 +153,40 @@ const TimeSaverCategory = () => {
                     {item.summary}
                   </p>
 
+                  {/* Key Points */}
+                  {item.keyPoints && item.keyPoints.length > 0 && (
+                    <div className="mb-3">
+                      <ul className="text-sm text-gray-600 space-y-1">
+                        {(Array.isArray(item.keyPoints) ? item.keyPoints : item.keyPoints.split('|'))
+                          .slice(0, 3)
+                          .map((point, idx) => (
+                            <li key={idx} className="flex items-start">
+                              <span className="text-blue-500 mr-2">•</span>
+                              <span>{point.trim()}</span>
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between text-sm text-gray-500">
                     <span>
                       {item.readTimeSeconds ? `${Math.ceil(item.readTimeSeconds / 60)}m read` : 'Quick read'}
                     </span>
-                    <span>{new Date(item.publishedAt).toLocaleDateString()}</span>
+                    <div className="flex items-center space-x-4">
+                      {item.viewCount && (
+                        <span>{item.viewCount.toLocaleString()} views</span>
+                      )}
+                      <span>{new Date(item.publishedAt).toLocaleDateString()}</span>
+                    </div>
                   </div>
+
+                  {/* Linked Article Info */}
+                  {(item.linkedArticle || item.linkedAiArticle) && (
+                    <div className="mt-2 text-xs text-blue-600 font-medium">
+                      Click to read full article →
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

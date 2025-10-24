@@ -58,7 +58,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   const timeSaverSubNavigation = [
     { name: 'Dashboard', href: '/time-saver', icon: Home, roles: ['ADMIN', 'AD_MANAGER', 'EDITOR'] },
     { name: 'All Content', href: '/time-saver/content', icon: FileText, roles: ['ADMIN', 'AD_MANAGER', 'EDITOR'] },
-    { name: 'Analytics', href: '/time-saver/analytics', icon: BarChart3, roles: ['ADMIN', 'AD_MANAGER'] },
+    // { name: 'Analytics', href: '/time-saver/analytics', icon: BarChart3, roles: ['ADMIN', 'AD_MANAGER'] },
     // Create access for EDITOR and AD_MANAGER only
     { name: 'Create Content', href: '/time-saver/create', icon: Edit, roles: ['EDITOR', 'AD_MANAGER'] }
   ];

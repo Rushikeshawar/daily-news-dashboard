@@ -163,10 +163,10 @@ export const timeSaverService = {
     try {
       console.log('TimeSaver Service: Fetching content with params:', params);
       
-      // Add includeLinks parameter to fetch linked articles
+      // Add includeLinked parameter to fetch linked articles
       const apiParams = {
         ...params,
-        includeLinks: true  // Always include linked article information
+        includeLinked: 'true'  // Backend expects 'includeLinked' as string
       };
       
       const response = await Promise.race([
@@ -178,8 +178,9 @@ export const timeSaverService = {
 
       console.log('TimeSaver Service: Content API response:', response.data);
       
-      const actualData = response.data?.data || response.data;
-      const content = actualData?.content || actualData || [];
+      // Backend returns: { success: true, data: [...], pagination: {...} }
+      const content = response.data?.data || [];
+      const pagination = response.data?.pagination || {};
       
       // Log articles with links for debugging
       const linkedContent = content.filter(item => item.linkedArticle || item.linkedAiArticle);
@@ -191,14 +192,7 @@ export const timeSaverService = {
         success: true,
         data: {
           content: content,
-          pagination: actualData?.pagination || {
-            page: parseInt(params.page) || 1,
-            limit: parseInt(params.limit) || 10,
-            totalPages: 1,
-            totalCount: content.length,
-            hasNext: false,
-            hasPrev: false
-          }
+          pagination: pagination
         }
       };
 
@@ -257,8 +251,7 @@ export const timeSaverService = {
             limit,
             totalPages: Math.ceil(filteredContent.length / limit),
             totalCount: filteredContent.length,
-            hasNext: endIndex < filteredContent.length,
-            hasPrev: page > 1
+            hasMore: endIndex < filteredContent.length
           }
         }
       };
@@ -266,91 +259,114 @@ export const timeSaverService = {
   },
 
   /**
-   * Get single Time Saver content by ID with linked articles
+   * Get content by category group
    */
-  getContentById: async (id) => {
+  getContentByCategory: async (group, params = {}) => {
     try {
-      console.log('TimeSaver Service: Fetching content by ID:', id);
+      console.log('TimeSaver Service: Fetching category content for:', group);
+      
+      const apiParams = {
+        ...params,
+        contentGroup: group,
+        includeLinked: 'true'
+      };
       
       const response = await Promise.race([
-        api.get(`/time-saver/content/${id}?includeLinks=true`),
+        api.get('/time-saver/content', { params: apiParams }),
         new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Request timeout')), API_TIMEOUT)
         )
       ]);
 
-      const actualData = response.data?.data || response.data;
-      const content = actualData?.content || actualData;
+      console.log('TimeSaver Service: Category content response:', response.data);
       
-      // Log linked articles if present
-      if (content.linkedArticle || content.linkedAiArticle) {
-        console.log('TimeSaver: Content has linked articles:', {
-          id: content.id,
-          linkedArticle: content.linkedArticle?.title,
-          linkedAiArticle: content.linkedAiArticle?.title
-        });
-      }
+      // Backend returns: { success: true, data: [...], pagination: {...} }
+      const content = response.data?.data || [];
+      const pagination = response.data?.pagination || {};
       
       return {
         success: true,
-        data: content
+        data: {
+          content: content,
+          totalCount: pagination.totalCount || content.length,
+          pagination: pagination
+        }
       };
-
     } catch (error) {
-      console.warn('TimeSaver Service: Content by ID API unavailable, using mock data');
-      const mockItem = mockTimeSaverContent.find(item => item.id === id) || mockTimeSaverContent[0];
+      console.error('TimeSaver Service: Get content by category error:', error);
+      
+      // Fallback to mock data
+      let filteredContent = [...mockTimeSaverContent].filter(
+        item => item.contentGroup === group
+      );
+      
       return {
         success: true,
-        data: mockItem
+        data: {
+          content: filteredContent,
+          totalCount: filteredContent.length,
+          pagination: {
+            page: 1,
+            limit: filteredContent.length,
+            totalCount: filteredContent.length,
+            totalPages: 1,
+            hasMore: false
+          }
+        }
       };
     }
   },
 
-  // ==================== ARTICLE LINKING HELPERS ====================
-
   /**
-   * Get the correct article URL for navigation
-   * @param {Object} content - Time Saver content with linked articles
-   * @param {boolean} isLoggedIn - User login status
-   * @returns {Object} - Navigation info { url, requiresAuth, articleType }
+   * Get article link for content item
+   * Returns navigation information for the linked article
    */
-  getArticleNavigationUrl: (content, isLoggedIn = false) => {
-    console.log('TimeSaver: Getting navigation URL for content:', content.id);
-    console.log('User logged in:', isLoggedIn);
+  getArticleLink: (content) => {
+    if (!content) {
+      return {
+        url: null,
+        requiresAuth: false,
+        articleType: null
+      };
+    }
+
+    // Check if user is authenticated (you may need to adjust this based on your auth system)
+    const isAuthenticated = !!localStorage.getItem('token'); // Adjust based on your auth implementation
     
-    // Priority 1: Use linked regular article if available
+    // Priority 1: Check for linked regular article
     if (content.linkedArticle && content.linkedArticle.slug) {
-      const articleUrl = `/articles/${content.linkedArticle.slug}`;
-      console.log('Navigating to linked article:', articleUrl);
+      console.log('Using linked article:', content.linkedArticle.headline || content.linkedArticle.title);
       
       return {
-        url: articleUrl,
+        url: `/articles/${content.linkedArticle.slug}`,
         requiresAuth: false,
         articleType: 'regular',
-        title: content.linkedArticle.title
+        title: content.linkedArticle.headline || content.linkedArticle.title
       };
     }
     
-    // Priority 2: Use linked AI article if available and user is logged in
-    if (content.linkedAiArticle && content.linkedAiArticle.slug) {
-      if (isLoggedIn) {
-        const aiArticleUrl = `/ai-articles/${content.linkedAiArticle.slug}`;
-        console.log('Navigating to AI article:', aiArticleUrl);
-        
+    // Priority 2: Check for linked AI article (requires authentication)
+    if (content.linkedAiArticle) {
+      const aiArticleTitle = content.linkedAiArticle.headline || content.linkedAiArticle.title;
+      const aiArticleId = content.linkedAiArticle.id;
+      
+      console.log('Using linked AI article:', aiArticleTitle);
+      
+      if (isAuthenticated) {
         return {
-          url: aiArticleUrl,
+          url: `/ai-articles/${aiArticleId}`,
           requiresAuth: true,
           articleType: 'ai',
-          title: content.linkedAiArticle.title
+          title: aiArticleTitle
         };
       } else {
         console.log('AI article requires authentication, redirecting to login');
         
         return {
-          url: `/login?redirect=/ai-articles/${content.linkedAiArticle.slug}`,
+          url: `/login?redirect=/ai-articles/${aiArticleId}`,
           requiresAuth: true,
           articleType: 'ai',
-          title: content.linkedAiArticle.title,
+          title: aiArticleTitle,
           needsLogin: true
         };
       }
@@ -516,6 +532,13 @@ export const timeSaverService = {
       console.error('TimeSaver Service: Record view error:', error);
       return { success: false };
     }
+  },
+
+  /**
+   * Track view (alias for recordView for backward compatibility)
+   */
+  trackView: async (contentId) => {
+    return timeSaverService.recordView(contentId);
   },
 
   /**

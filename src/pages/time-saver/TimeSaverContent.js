@@ -1,7 +1,7 @@
 // src/pages/time-saver/TimeSaverContent.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Search, Filter, Clock, Zap } from 'lucide-react';
+import { Plus, Search, Filter, Clock, Zap, ExternalLink } from 'lucide-react';
 import { timeSaverService } from '../../services/timeSaverService';
 import { useAuth } from '../../context/AuthContext';
 import SearchBox from '../../components/common/SearchBox';
@@ -75,9 +75,35 @@ const TimeSaverContent = () => {
     setPagination(prev => ({ ...prev, page }));
   };
 
-  const handleContentClick = (contentId) => {
-    timeSaverService.trackView(contentId);
-    // You can add navigation to detail page here if needed
+  const handleContentClick = async (item) => {
+    try {
+      // Track the view
+      await timeSaverService.trackView(item.id);
+      
+      // Get the article link information
+      const linkInfo = timeSaverService.getArticleLink(item);
+      
+      if (linkInfo.url) {
+        if (linkInfo.isExternal) {
+          // Open external URL in new tab
+          window.open(linkInfo.url, '_blank', 'noopener,noreferrer');
+        } else if (linkInfo.requiresAuth && linkInfo.needsLogin) {
+          // Navigate to login with redirect
+          navigate(linkInfo.url);
+          toast.info('Please log in to view this AI-generated article');
+        } else {
+          // Navigate to internal article
+          navigate(linkInfo.url);
+        }
+      } else {
+        // No linked article - show a message
+        toast.info('No full article available for this content');
+        console.log('Content details:', item);
+      }
+    } catch (error) {
+      console.error('Handle content click error:', error);
+      toast.error('Failed to open article');
+    }
   };
 
   const getContentTypeColor = (type) => {
@@ -194,7 +220,7 @@ const TimeSaverContent = () => {
             {content.map((item) => (
               <div
                 key={item.id}
-                onClick={() => handleContentClick(item.id)}
+                onClick={() => handleContentClick(item)}
                 className="card hover:shadow-lg transition-shadow duration-200 cursor-pointer"
               >
                 {/* Image */}
@@ -220,6 +246,10 @@ const TimeSaverContent = () => {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getContentTypeColor(item.contentType)}`}>
                       {item.contentType?.replace('_', ' ')}
                     </span>
+                    {/* Show external link icon if it's an external source */}
+                    {item.sourceUrl && !item.linkedArticle && !item.linkedAiArticle && (
+                      <ExternalLink className="w-4 h-4 text-gray-500" />
+                    )}
                   </div>
                   {item.isPriority && (
                     <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-medium flex items-center">
@@ -230,7 +260,7 @@ const TimeSaverContent = () => {
                 </div>
 
                 {/* Title */}
-                <h3 className="text-xl font-semibold text-gray-900 mb-3 line-clamp-2">
+                <h3 className="text-xl font-semibold text-gray-900 mb-3 line-clamp-2 hover:text-blue-600 transition-colors">
                   {item.title}
                 </h3>
 
@@ -266,7 +296,7 @@ const TimeSaverContent = () => {
 
                 {/* Tags */}
                 {item.tags && (
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1 mb-3">
                     {(typeof item.tags === 'string' ? item.tags.split(',') : item.tags)
                       .slice(0, 3)
                       .map((tag, index) => (
@@ -277,6 +307,13 @@ const TimeSaverContent = () => {
                         #{tag.trim()}
                       </span>
                     ))}
+                  </div>
+                )}
+
+                {/* Linked Article Info */}
+                {(item.linkedArticle || item.linkedAiArticle) && (
+                  <div className="text-xs text-blue-600 font-medium">
+                    Click to read full article →
                   </div>
                 )}
               </div>

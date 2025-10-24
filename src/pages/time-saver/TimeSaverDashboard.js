@@ -1,7 +1,7 @@
 // src/pages/time-saver/TimeSaverDashboard.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Zap, TrendingUp, BarChart3, Plus, ArrowRight } from 'lucide-react';
+import { Clock, Zap, TrendingUp, BarChart3, Plus, ArrowRight, ExternalLink } from 'lucide-react';
 import { timeSaverService } from '../../services/timeSaverService';
 import { useAuth } from '../../context/AuthContext';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -32,7 +32,7 @@ const TimeSaverDashboard = () => {
         timeSaverService.getContent({ limit: 5, sortBy: 'publishedAt', order: 'desc' })
       ]);
 
-      setStats(statsResponse.data.stats);
+      setStats(statsResponse.data);
       setRecentContent(contentResponse.data.content || []);
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
@@ -46,8 +46,35 @@ const TimeSaverDashboard = () => {
     navigate(`/time-saver/category/${groupKey}`);
   };
 
-  const handleContentClick = (contentId) => {
-    timeSaverService.trackView(contentId);
+  const handleContentClick = async (item) => {
+    try {
+      // Track the view
+      await timeSaverService.trackView(item.id);
+      
+      // Get the article link information
+      const linkInfo = timeSaverService.getArticleLink(item);
+      
+      if (linkInfo.url) {
+        if (linkInfo.isExternal) {
+          // Open external URL in new tab
+          window.open(linkInfo.url, '_blank', 'noopener,noreferrer');
+        } else if (linkInfo.requiresAuth && linkInfo.needsLogin) {
+          // Navigate to login with redirect
+          navigate(linkInfo.url);
+          toast.info('Please log in to view this AI-generated article');
+        } else {
+          // Navigate to internal article
+          navigate(linkInfo.url);
+        }
+      } else {
+        // No linked article - show a message
+        toast.info('No full article available for this content');
+        console.log('Content details:', item);
+      }
+    } catch (error) {
+      console.error('Handle content click error:', error);
+      toast.error('Failed to open article');
+    }
   };
 
   if (loading) {
@@ -179,7 +206,7 @@ const TimeSaverDashboard = () => {
             {recentContent.map((item, index) => (
               <div
                 key={item.id}
-                onClick={() => handleContentClick(item.id)}
+                onClick={() => handleContentClick(item)}
                 className="flex items-start space-x-4 p-4 hover:bg-gray-50 rounded-lg cursor-pointer transition-colors duration-200"
               >
                 <div className="flex-shrink-0">
@@ -211,9 +238,13 @@ const TimeSaverDashboard = () => {
                         Priority
                       </span>
                     )}
+                    {/* Show external link icon if it's an external source */}
+                    {item.sourceUrl && !item.linkedArticle && !item.linkedAiArticle && (
+                      <ExternalLink className="w-3 h-3 text-gray-500" />
+                    )}
                   </div>
 
-                  <h3 className="font-medium text-gray-900 mb-1 line-clamp-1">
+                  <h3 className="font-medium text-gray-900 mb-1 line-clamp-1 hover:text-blue-600 transition-colors">
                     {item.title}
                   </h3>
 
@@ -225,8 +256,20 @@ const TimeSaverDashboard = () => {
                     <span>
                       {item.readTimeSeconds ? `${Math.ceil(item.readTimeSeconds / 60)}m read` : 'Quick read'}
                     </span>
-                    <span>{new Date(item.publishedAt).toLocaleDateString()}</span>
+                    <div className="flex items-center space-x-3">
+                      {item.viewCount && (
+                        <span>{item.viewCount.toLocaleString()} views</span>
+                      )}
+                      <span>{new Date(item.publishedAt).toLocaleDateString()}</span>
+                    </div>
                   </div>
+
+                  {/* Linked Article Indicator */}
+                  {(item.linkedArticle || item.linkedAiArticle) && (
+                    <div className="mt-1 text-xs text-blue-600 font-medium">
+                      Click to read full article →
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
