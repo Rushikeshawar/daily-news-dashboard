@@ -1,11 +1,10 @@
-// src/components/articles/ArticleForm.jsx - FIXED scheduledAt validation issue
+// src/components/aiml/AiMlArticleForm.jsx - CORRECTED FORM COMPONENT
 
-import React, { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
-import { categoryService } from '../../services/categoryService';
+import React, { useState } from 'react';
+import { toast } from 'react-toastify';
+import LoadingSpinner from '../common/LoadingSpinner';
 
-const ArticleForm = ({ initialData, onSubmit, loading }) => {
-  const [categories, setCategories] = useState([]);
+const AiMlArticleForm = ({ initialData, onSubmit, loading }) => {
   const [imagePreview, setImagePreview] = useState(initialData?.featuredImage || '');
   
   const [formData, setFormData] = useState({
@@ -13,38 +12,25 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
     briefContent: initialData?.briefContent || '',
     fullContent: initialData?.fullContent || '',
     category: initialData?.category || '',
-    priorityLevel: initialData?.priorityLevel || 3,
-    tags: initialData?.tags || '',
     featuredImage: initialData?.featuredImage || '',
-    metaTitle: initialData?.metaTitle || '',
-    metaDescription: initialData?.metaDescription || '',
-    scheduledAt: initialData?.scheduledAt || '',
+    tags: initialData?.tags || '',
+    aiModel: initialData?.aiModel || '',
+    aiApplication: initialData?.aiApplication || '',
+    companyMentioned: initialData?.companyMentioned || '',
+    technologyType: initialData?.technologyType || '',
+    relevanceScore: initialData?.relevanceScore || '',
+    isTrending: initialData?.isTrending || false,
     
     // ⭐ NEW: TimeSaver auto-creation fields
-    createTimeSaver: true,
+    createTimeSaver: true, // Auto-create by default
     timeSaverTitle: '',
     timeSaverSummary: '',
     timeSaverKeyPoints: '',
-    timeSaverContentType: 'ARTICLE',
-    timeSaverIconName: 'Newspaper',
-    timeSaverBgColor: '#3B82F6',
+    timeSaverContentType: 'AI_ML',
+    timeSaverIconName: 'Brain',
+    timeSaverBgColor: '#8B5CF6', // Purple for AI
     timeSaverIsPriority: false
   });
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    try {
-      const response = await categoryService.getCategories({ isActive: true });
-      const categoriesData = response.data?.categories || response.data || [];
-      setCategories(categoriesData);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast.error('Failed to load categories');
-    }
-  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -64,45 +50,27 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
     e.preventDefault();
     
     // Validation
-    if (formData.briefContent.length < 50) {
-      toast.error('Brief content must be at least 50 characters');
+    if (!formData.headline) {
+      toast.error('Headline is required');
       return;
     }
 
     if (!formData.category) {
-      toast.error('Please select a category');
+      toast.error('Category is required');
       return;
     }
 
     // Prepare data for submission
     const submitData = {
-      headline: formData.headline,
-      briefContent: formData.briefContent,
-      fullContent: formData.fullContent,
-      category: formData.category,
-      priorityLevel: parseInt(formData.priorityLevel),
-      tags: formData.tags,
-      featuredImage: formData.featuredImage,
-      metaTitle: formData.metaTitle,
-      metaDescription: formData.metaDescription,
-      
-      // ⭐ FIX: Only include scheduledAt if it has a value
-      ...(formData.scheduledAt && { scheduledAt: formData.scheduledAt }),
-      
-      // TimeSaver fields
-      createTimeSaver: formData.createTimeSaver,
-      timeSaverTitle: formData.timeSaverTitle,
-      timeSaverSummary: formData.timeSaverSummary,
+      ...formData,
+      relevanceScore: formData.relevanceScore ? parseFloat(formData.relevanceScore) : null,
+      // Convert timeSaverKeyPoints string to array if provided
       timeSaverKeyPoints: formData.timeSaverKeyPoints 
         ? formData.timeSaverKeyPoints.split(',').map(point => point.trim()).filter(Boolean)
-        : [],
-      timeSaverContentType: formData.timeSaverContentType,
-      timeSaverIconName: formData.timeSaverIconName,
-      timeSaverBgColor: formData.timeSaverBgColor,
-      timeSaverIsPriority: formData.timeSaverIsPriority
+        : []
     };
 
-    console.log('Submitting article with TimeSaver options:', submitData);
+    console.log('Submitting AI/ML article with TimeSaver options:', submitData);
     onSubmit(submitData);
   };
 
@@ -121,8 +89,8 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
           name="headline"
           value={formData.headline}
           onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Enter article headline"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          placeholder="Enter AI/ML article headline"
           maxLength="500"
           required
         />
@@ -134,7 +102,7 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
       {/* Brief Content */}
       <div>
         <label htmlFor="briefContent" className="block text-sm font-medium text-gray-700 mb-2">
-          Brief Content *
+          Brief Content
         </label>
         <textarea
           id="briefContent"
@@ -142,20 +110,19 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
           value={formData.briefContent}
           onChange={handleChange}
           rows={3}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
-          placeholder="Enter a brief description (50-300 characters)"
-          maxLength="300"
-          required
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-vertical"
+          placeholder="Enter a brief description"
+          maxLength="500"
         />
         <p className="text-xs text-gray-500 mt-1">
-          {formData.briefContent.length}/300 characters (minimum 50)
+          {formData.briefContent.length}/500 characters
         </p>
       </div>
 
       {/* Full Content */}
       <div>
         <label htmlFor="fullContent" className="block text-sm font-medium text-gray-700 mb-2">
-          Full Content *
+          Full Content
         </label>
         <textarea
           id="fullContent"
@@ -163,9 +130,8 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
           value={formData.fullContent}
           onChange={handleChange}
           rows={15}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-vertical"
           placeholder="Enter the complete article content"
-          required
         />
         <div className="flex justify-between text-xs text-gray-500 mt-1">
           <span>{wordCount} words</span>
@@ -173,54 +139,147 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
         </div>
       </div>
 
-      {/* Category and Priority Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
-            Category *
-          </label>
-          <select
-            id="category"
-            name="category"
-            value={formData.category}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-            required
-          >
-            <option value="">Select category</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.name}>
-                {category.displayName || category.name}
-              </option>
-            ))}
-          </select>
-          {categories.length === 0 && (
-            <p className="text-xs text-red-500 mt-1">
-              No categories available. Please create one first.
-            </p>
-          )}
+      {/* AI/ML Specific Fields Grid */}
+      <div className="bg-purple-50 p-4 rounded-lg space-y-4">
+        <h3 className="text-sm font-semibold text-gray-900 flex items-center">
+          <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          </svg>
+          AI/ML Specific Information
+        </h3>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Category */}
+          <div>
+            <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-2">
+              Category *
+            </label>
+            <select
+              id="category"
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+              required
+            >
+              <option value="">Select category</option>
+              <option value="MACHINE_LEARNING">Machine Learning</option>
+              <option value="DEEP_LEARNING">Deep Learning</option>
+              <option value="NLP">Natural Language Processing</option>
+              <option value="COMPUTER_VISION">Computer Vision</option>
+              <option value="ROBOTICS">Robotics</option>
+              <option value="GENERATIVE_AI">Generative AI</option>
+              <option value="AI_ETHICS">AI Ethics</option>
+              <option value="AI_RESEARCH">AI Research</option>
+              <option value="AI_INDUSTRY">AI Industry</option>
+            </select>
+          </div>
+
+          {/* AI Model */}
+          <div>
+            <label htmlFor="aiModel" className="block text-sm font-medium text-gray-700 mb-2">
+              AI Model
+            </label>
+            <input
+              type="text"
+              id="aiModel"
+              name="aiModel"
+              value={formData.aiModel}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="e.g., GPT-4, Claude, Llama"
+            />
+          </div>
+
+          {/* AI Application */}
+          <div>
+            <label htmlFor="aiApplication" className="block text-sm font-medium text-gray-700 mb-2">
+              AI Application
+            </label>
+            <input
+              type="text"
+              id="aiApplication"
+              name="aiApplication"
+              value={formData.aiApplication}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="e.g., Text Generation, Image Recognition"
+            />
+          </div>
+
+          {/* Company Mentioned */}
+          <div>
+            <label htmlFor="companyMentioned" className="block text-sm font-medium text-gray-700 mb-2">
+              Company Mentioned
+            </label>
+            <input
+              type="text"
+              id="companyMentioned"
+              name="companyMentioned"
+              value={formData.companyMentioned}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="e.g., OpenAI, Google, Anthropic"
+            />
+          </div>
+
+          {/* Technology Type */}
+          <div>
+            <label htmlFor="technologyType" className="block text-sm font-medium text-gray-700 mb-2">
+              Technology Type
+            </label>
+            <select
+              id="technologyType"
+              name="technologyType"
+              value={formData.technologyType}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
+            >
+              <option value="">Select type</option>
+              <option value="LLM">Large Language Model</option>
+              <option value="CNN">Convolutional Neural Network</option>
+              <option value="RNN">Recurrent Neural Network</option>
+              <option value="TRANSFORMER">Transformer</option>
+              <option value="GAN">Generative Adversarial Network</option>
+              <option value="DIFFUSION">Diffusion Model</option>
+              <option value="REINFORCEMENT_LEARNING">Reinforcement Learning</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+
+          {/* Relevance Score */}
+          <div>
+            <label htmlFor="relevanceScore" className="block text-sm font-medium text-gray-700 mb-2">
+              Relevance Score (0-10)
+            </label>
+            <input
+              type="number"
+              id="relevanceScore"
+              name="relevanceScore"
+              value={formData.relevanceScore}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="8.5"
+              min="0"
+              max="10"
+              step="0.1"
+            />
+          </div>
         </div>
 
-        <div>
-          <label htmlFor="priorityLevel" className="block text-sm font-medium text-gray-700 mb-2">
-            Priority Level
-          </label>
-          <select
-            id="priorityLevel"
-            name="priorityLevel"
-            value={formData.priorityLevel}
+        {/* Trending Toggle */}
+        <div className="flex items-center">
+          <input
+            type="checkbox"
+            id="isTrending"
+            name="isTrending"
+            checked={formData.isTrending}
             onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-          >
-            <option value={1}>Low Priority</option>
-            <option value={3}>Medium Priority</option>
-            <option value={5}>High Priority (Featured)</option>
-            <option value={8}>Very High Priority</option>
-            <option value={10}>Critical (Breaking News)</option>
-          </select>
-          <p className="text-xs text-gray-500 mt-1">
-            Higher priority articles appear first
-          </p>
+            className="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+          />
+          <label htmlFor="isTrending" className="ml-2 text-sm text-gray-700">
+            Mark as Trending 🔥
+          </label>
         </div>
       </div>
 
@@ -235,11 +294,11 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
           name="tags"
           value={formData.tags}
           onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="technology, innovation, AI, news"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          placeholder="AI, machine learning, GPT, neural networks"
         />
         <p className="text-sm text-gray-500 mt-1">
-          Comma-separated tags (e.g., tech, news, ai)
+          Comma-separated tags
         </p>
       </div>
 
@@ -254,8 +313,8 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
           name="featuredImage"
           value={formData.featuredImage}
           onChange={handleImageUrlChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="https://example.com/image.jpg"
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+          placeholder="https://example.com/ai-image.jpg"
         />
         {imagePreview && (
           <div className="mt-3">
@@ -277,17 +336,17 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
       </div>
 
       {/* ⭐ NEW: TimeSaver Auto-Creation Section */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border-2 border-blue-200 space-y-4">
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border-2 border-purple-200 space-y-4">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               TimeSaver Auto-Creation
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              Automatically create a TimeSaver card when this article is published
+              Automatically create a TimeSaver card for this AI/ML article
             </p>
           </div>
           <label className="flex items-center cursor-pointer">
@@ -296,7 +355,7 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
               name="createTimeSaver"
               checked={formData.createTimeSaver}
               onChange={handleChange}
-              className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
             />
             <span className="ml-2 text-sm font-medium text-gray-700">
               {formData.createTimeSaver ? 'Enabled' : 'Disabled'}
@@ -305,7 +364,7 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
         </div>
 
         {formData.createTimeSaver && (
-          <div className="space-y-4 pt-4 border-t border-blue-200">
+          <div className="space-y-4 pt-4 border-t border-purple-200">
             <p className="text-xs text-gray-600">
               💡 Leave fields empty to auto-generate from article content
             </p>
@@ -321,7 +380,7 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
                 name="timeSaverTitle"
                 value={formData.timeSaverTitle}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 placeholder="Auto-generated from headline"
                 maxLength="300"
               />
@@ -338,8 +397,8 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
                 value={formData.timeSaverSummary}
                 onChange={handleChange}
                 rows={2}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
-                placeholder="Auto-generated from brief content"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-vertical"
+                placeholder="Auto-generated from brief content or AI details"
                 maxLength="300"
               />
             </div>
@@ -355,11 +414,11 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
                 name="timeSaverKeyPoints"
                 value={formData.timeSaverKeyPoints}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Point 1, Point 2, Point 3"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="AI Model: GPT-4, Company: OpenAI, Application: Text Gen"
               />
               <p className="text-xs text-gray-500 mt-1">
-                Comma-separated key points (auto-generated from tags if empty)
+                Comma-separated key points (auto-generated from AI details if empty)
               </p>
             </div>
 
@@ -375,9 +434,9 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
                   name="timeSaverContentType"
                   value={formData.timeSaverContentType}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
                 >
-                  <option value="ARTICLE">Article</option>
+                  <option value="AI_ML">AI/ML</option>
                   <option value="DIGEST">Digest</option>
                   <option value="QUICK_UPDATE">Quick Update</option>
                   <option value="BRIEFING">Briefing</option>
@@ -396,16 +455,16 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
                   name="timeSaverIconName"
                   value={formData.timeSaverIconName}
                   onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
                 >
-                  <option value="Newspaper">📰 Newspaper</option>
+                  <option value="Brain">🧠 Brain (AI)</option>
+                  <option value="Cpu">🖥️ CPU</option>
                   <option value="Zap">⚡ Lightning</option>
-                  <option value="TrendingUp">📈 Trending</option>
-                  <option value="AlertCircle">🔔 Alert</option>
-                  <option value="Star">⭐ Star</option>
-                  <option value="Flame">🔥 Fire</option>
-                  <option value="BookOpen">📖 Book</option>
-                  <option value="Globe">🌍 Globe</option>
+                  <option value="Sparkles">✨ Sparkles</option>
+                  <option value="Rocket">🚀 Rocket</option>
+                  <option value="Bot">🤖 Robot</option>
+                  <option value="Network">🔗 Network</option>
+                  <option value="Code">💻 Code</option>
                 </select>
               </div>
 
@@ -427,8 +486,8 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
                     type="text"
                     value={formData.timeSaverBgColor}
                     onChange={(e) => setFormData(prev => ({ ...prev, timeSaverBgColor: e.target.value }))}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent flex-1"
-                    placeholder="#3B82F6"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent flex-1"
+                    placeholder="#8B5CF6"
                     pattern="^#[0-9A-Fa-f]{6}$"
                   />
                 </div>
@@ -443,7 +502,7 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
                 name="timeSaverIsPriority"
                 checked={formData.timeSaverIsPriority}
                 onChange={handleChange}
-                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                className="h-4 w-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
               />
               <label htmlFor="timeSaverIsPriority" className="ml-2 text-sm text-gray-700">
                 Mark as Priority TimeSaver (appears at top)
@@ -451,49 +510,6 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
             </div>
           </div>
         )}
-      </div>
-
-      {/* SEO Section */}
-      <div className="bg-gray-50 p-4 rounded-lg space-y-4">
-        <h3 className="text-sm font-semibold text-gray-900">SEO Settings (Optional)</h3>
-        
-        <div>
-          <label htmlFor="metaTitle" className="block text-sm font-medium text-gray-700 mb-2">
-            Meta Title
-          </label>
-          <input
-            type="text"
-            id="metaTitle"
-            name="metaTitle"
-            value={formData.metaTitle}
-            onChange={handleChange}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="SEO-friendly title (auto-generated from headline)"
-            maxLength="60"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            {formData.metaTitle.length}/60 characters
-          </p>
-        </div>
-
-        <div>
-          <label htmlFor="metaDescription" className="block text-sm font-medium text-gray-700 mb-2">
-            Meta Description
-          </label>
-          <textarea
-            id="metaDescription"
-            name="metaDescription"
-            value={formData.metaDescription}
-            onChange={handleChange}
-            rows={2}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-vertical"
-            placeholder="SEO description (auto-generated from brief content)"
-            maxLength="160"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            {formData.metaDescription.length}/160 characters
-          </p>
-        </div>
       </div>
 
       {/* Submit Button */}
@@ -509,19 +525,19 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
         <button
           type="submit"
           disabled={loading}
-          className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {loading ? (
             <span className="flex items-center">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-              <span>Saving...</span>
+              <LoadingSpinner size="sm" />
+              <span className="ml-2">Saving...</span>
             </span>
           ) : (
             <>
               {formData.createTimeSaver ? (
-                <>Save Article + Create TimeSaver</>
+                <>Save AI/ML Article + Create TimeSaver</>
               ) : (
-                <>Save Article</>
+                <>Save AI/ML Article</>
               )}
             </>
           )}
@@ -531,4 +547,4 @@ const ArticleForm = ({ initialData, onSubmit, loading }) => {
   );
 };
 
-export default ArticleForm;
+export default AiMlArticleForm;

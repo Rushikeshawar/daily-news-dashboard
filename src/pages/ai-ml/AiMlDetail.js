@@ -1,7 +1,7 @@
-// src/pages/ai-ml/AiMlDetail.js - FIXED CATEGORY DISPLAY (GLOBAL REPLACE)
+// src/pages/ai-ml/AiMlDetail.js - WITH EDIT AND DELETE OPTIONS
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Brain, Calendar, Eye, Share2, Bookmark, TrendingUp, ExternalLink, Plus, Clock } from 'lucide-react';
+import { ArrowLeft, Brain, Calendar, Eye, Share2, Bookmark, TrendingUp, ExternalLink, Plus, Clock, Edit, Trash2 } from 'lucide-react';
 import { aiMlService } from '../../services/aiMlService';
 import { timeSaverService } from '../../services/timeSaverService';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -14,10 +14,12 @@ const AiMlDetail = () => {
   const { user } = useAuth();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(false);
   const [timeSavers, setTimeSavers] = useState([]);
   const [loadingTimeSavers, setLoadingTimeSavers] = useState(false);
 
   const canCreateTimeSaver = ['EDITOR', 'AD_MANAGER'].includes(user?.role);
+  const canEditDelete = ['EDITOR', 'AD_MANAGER', 'ADMIN'].includes(user?.role);
 
   useEffect(() => {
     fetchArticle();
@@ -89,6 +91,28 @@ const AiMlDetail = () => {
     }
   };
 
+  const handleEdit = () => {
+    navigate(`/ai-ml/edit/${id}`);
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this article? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      await aiMlService.deleteArticle(id);
+      toast.success('Article deleted successfully!');
+      navigate('/ai-ml');
+    } catch (error) {
+      console.error('Delete article error:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete article');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleCreateTimeSaver = () => {
     navigate(`/time-saver/create?aiArticleId=${id}&linkType=ai`);
   };
@@ -129,17 +153,40 @@ const AiMlDetail = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center space-x-4">
-        <button
-          onClick={() => navigate('/ai-ml')}
-          className="p-2 hover:bg-gray-100 rounded-md"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </button>
-        <div className="flex items-center">
-          <Brain className="w-6 h-6 mr-2 text-blue-600" />
-          <span className="text-sm text-gray-600">AI/ML News</span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => navigate('/ai-ml')}
+            className="p-2 hover:bg-gray-100 rounded-md"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex items-center">
+            <Brain className="w-6 h-6 mr-2 text-blue-600" />
+            <span className="text-sm text-gray-600">AI/ML News</span>
+          </div>
         </div>
+
+        {/* Edit and Delete Buttons */}
+        {canEditDelete && (
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleEdit}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Edit
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-red-400"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {deleting ? 'Deleting...' : 'Delete'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Article Content */}

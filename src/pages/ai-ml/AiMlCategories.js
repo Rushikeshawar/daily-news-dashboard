@@ -22,7 +22,7 @@ const AiMlCategories = () => {
     isHot: false
   });
 
-  const canManage = ['EDITOR', 'AD_MANAGER'].includes(user?.role);
+  const canManage = ['ADMIN', 'AD_MANAGER'].includes(user?.role);
 
   useEffect(() => {
     fetchCategories();
