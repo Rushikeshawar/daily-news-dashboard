@@ -1,4 +1,4 @@
-// src/services/aiMlService.js - WITH UPDATE AND DELETE METHODS
+// src/services/aiMlService.js - COMPLETE WITH CATEGORY MANAGEMENT
 import api from './api';
 
 export const aiMlService = {
@@ -82,7 +82,7 @@ export const aiMlService = {
     }
   },
   
-  // ==================== CREATE, UPDATE & DELETE ====================
+  // ==================== CREATE, UPDATE & DELETE ARTICLES ====================
   
   // Create new AI/ML article
   createArticle: async (data) => {
@@ -152,7 +152,7 @@ export const aiMlService = {
     }
   },
   
-  // ==================== CATEGORIES ====================
+  // ==================== CATEGORY MANAGEMENT ====================
   
   // Get AI/ML categories
   getCategories: async () => {
@@ -179,6 +179,74 @@ export const aiMlService = {
           categories: []
         }
       };
+    }
+  },
+  
+  // Create new category
+  createCategory: async (data) => {
+    try {
+      console.log('AiMlService: Creating category with data:', data);
+      
+      const response = await api.post('/ai-ml/categories', data);
+      console.log('AiMlService: Create category response:', response.data);
+      
+      let categoryData;
+      if (response.data && response.data.success && response.data.data) {
+        categoryData = response.data.data.category || response.data.data;
+      } else {
+        categoryData = response.data;
+      }
+      
+      return { 
+        success: true,
+        data: categoryData 
+      };
+    } catch (error) {
+      console.error('AiMlService: Create category error:', error);
+      throw error;
+    }
+  },
+  
+  // Update category
+  updateCategory: async (id, data) => {
+    try {
+      console.log('AiMlService: Updating category:', id, data);
+      
+      const response = await api.put(`/ai-ml/categories/${id}`, data);
+      console.log('AiMlService: Update category response:', response.data);
+      
+      let categoryData;
+      if (response.data && response.data.success && response.data.data) {
+        categoryData = response.data.data.category || response.data.data;
+      } else {
+        categoryData = response.data;
+      }
+      
+      return { 
+        success: true,
+        data: categoryData 
+      };
+    } catch (error) {
+      console.error('AiMlService: Update category error:', error);
+      throw error;
+    }
+  },
+  
+  // Delete category
+  deleteCategory: async (id) => {
+    try {
+      console.log('AiMlService: Deleting category:', id);
+      
+      const response = await api.delete(`/ai-ml/categories/${id}`);
+      console.log('AiMlService: Delete category response:', response.data);
+      
+      return { 
+        success: true,
+        data: response.data 
+      };
+    } catch (error) {
+      console.error('AiMlService: Delete category error:', error);
+      throw error;
     }
   },
   

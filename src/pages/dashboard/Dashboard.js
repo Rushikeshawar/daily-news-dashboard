@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   FileText, Users, Target, TrendingUp, Clock, CheckCircle, 
-  XCircle, Eye, Plus, ArrowRight, RefreshCw, DollarSign
+  XCircle, Eye, Plus, ArrowRight, RefreshCw, IndianRupee
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { analyticsService } from '../../services/analyticsService';
@@ -85,7 +85,7 @@ const Dashboard = () => {
         {
           title: 'Revenue',
           value: `₹${dashboardData.overview.totalRevenue?.toLocaleString() || '0'}`,
-          icon: DollarSign,
+          icon: IndianRupee,
           color: 'bg-yellow-500',
           link: '/analytics'
         }

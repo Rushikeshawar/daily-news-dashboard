@@ -37,7 +37,7 @@ const Articles = () => {
     action: null 
   });
 
-  const canCreateArticle = ['EDITOR', 'AD_MANAGER', 'ADMIN'].includes(user?.role);
+  const canCreateArticle = ['EDITOR', 'AD_MANAGER'].includes(user?.role);
 
   useEffect(() => {
     fetchArticles();
